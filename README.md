@@ -30,12 +30,13 @@ This project implements a distributed hospital system in C++. The system consist
 - Make
 
 ## Build Instructions
-```bash
+```
+make
 ./hospital_server
 ./authentication_server
 ./appointment_server
 ./prescription_server
-.client
+./client
 ```
 
 ## Data Files
