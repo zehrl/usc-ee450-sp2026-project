@@ -30,14 +30,21 @@ This project implements a distributed hospital system in C++. The system consist
 - Make
 
 ## Build Instructions
+
+### Production use
+
+1. Build servers
 ```
 make
 ./hospital_server
 ./authentication_server
 ./appointment_server
 ./prescription_server
-./client
 ```
+
+2. Run client side: `build/client`
+
+For developmental purposes, use `make run` to build and run executables. Run `make stop` to kill processes.
 
 ## Data Files
 
