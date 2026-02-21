@@ -39,3 +39,16 @@
 
 # debug information files
 *.dwo
+
+# Build
+build/
+
+# Binaries
+client
+hospital_server
+authentication_server
+appointment_server
+prescription_server
+
+# OS
+.DS_Store
