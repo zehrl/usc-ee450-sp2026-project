@@ -24,7 +24,10 @@ $(APPT):
 $(PRES):
 	$(CXX) $(CXXFLAGS) $(SRC_DIR)/prescription_server.cpp -o $(BUILD_DIR)/$(PRES)
 
-all: $(CLIENT) $(HOSPITAL) $(AUTH) $(APPT) $(PRES)
+mkbuilddir:
+	mkdir -p $(BUILD_DIR)
+
+all: mkbuilddir $(CLIENT) $(HOSPITAL) $(AUTH) $(APPT) $(PRES)
 
 run: all
 	$(BUILD_DIR)/hospital_server &
