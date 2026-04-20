@@ -43,3 +43,33 @@ stop:
 
 clean:
 	rm -rf $(BUILD_DIR)/*
+
+# ---------------------------------------------------------------------------
+# Test targets (uses doctest.h — NOT included in submission)
+# Each test binary compiles the corresponding .cpp source directly so the
+# tests can access all public members without a separate link step.
+# Run all tests: make test
+# ---------------------------------------------------------------------------
+TEST_FLAGS = -std=c++17 -g -Wall -I include -I third_party
+
+test_sha256: mkbuilddir tests/test_sha256.cpp third_party/sha256.cpp
+	$(CXX) $(TEST_FLAGS) tests/test_sha256.cpp third_party/sha256.cpp -o $(BUILD_DIR)/test_sha256
+	./$(BUILD_DIR)/test_sha256
+
+test_auth: mkbuilddir tests/test_auth.cpp third_party/sha256.cpp
+	$(CXX) $(TEST_FLAGS) tests/test_auth.cpp third_party/sha256.cpp -o $(BUILD_DIR)/test_auth
+	./$(BUILD_DIR)/test_auth
+
+test_hospital: mkbuilddir tests/test_hospital.cpp third_party/sha256.cpp
+	$(CXX) $(TEST_FLAGS) tests/test_hospital.cpp third_party/sha256.cpp -o $(BUILD_DIR)/test_hospital
+	./$(BUILD_DIR)/test_hospital
+
+test_appointment: mkbuilddir tests/test_appointment.cpp third_party/sha256.cpp
+	$(CXX) $(TEST_FLAGS) tests/test_appointment.cpp third_party/sha256.cpp -o $(BUILD_DIR)/test_appointment
+	./$(BUILD_DIR)/test_appointment
+
+test_prescription: mkbuilddir tests/test_prescription.cpp third_party/sha256.cpp
+	$(CXX) $(TEST_FLAGS) tests/test_prescription.cpp third_party/sha256.cpp -o $(BUILD_DIR)/test_prescription
+	./$(BUILD_DIR)/test_prescription
+
+test: test_sha256 test_auth test_hospital test_appointment test_prescription
