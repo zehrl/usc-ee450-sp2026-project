@@ -36,7 +36,7 @@ private:
 
    std::vector<Doctor> doctors;
 
-   std::map<std::string, std::string> treatments;  // illness → treatment
+   std::map<std::string, std::string> treatments; // illness → treatment
 
    // ... data members
 };
@@ -159,6 +159,15 @@ void HospitalServer::loadHospital(const std::string &filepath)
          treatments[illness] = treatment;
       }
    }
+
+   // TODO: Take out test lines below
+   // std::cout << "Doctors loaded: " << doctors.size() << std::endl;
+   // for (const auto &d : doctors)
+   //    std::cout << "  " << d.name << " " << d.hash << std::endl;
+
+   // std::cout << "Treatments loaded: " << treatments.size() << std::endl;
+   // for (const auto &t : treatments)
+   //    std::cout << "  " << t.first << " -> " << t.second << std::endl;
 }
 
 // Bandaid fix - normally we would separate our header definitions and our main method
