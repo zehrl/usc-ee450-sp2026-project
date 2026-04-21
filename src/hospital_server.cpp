@@ -43,7 +43,12 @@ private:
 
 bool HospitalServer::isDoctor(const std::string &userHash)
 {
-   std::cout << "isDoctor() called" << std::endl;
+   for(const auto& d : doctors) {
+      if (d.hash == userHash) {
+         return true;
+      }
+   }
+   
    return false;
 };
 
