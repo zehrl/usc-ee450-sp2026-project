@@ -29,13 +29,14 @@ inline std::string hashSuffix(const std::string &hash)
 }
 
 // TCP
-int makeTCPServerSocket(int port) {
+int makeTCPServerSocket(int port)
+{
    // Create the socket/file descriptor
    int fd = socket(
-       AF_INET,    // Address family: IPv4
+       AF_INET,     // Address family: IPv4
        SOCK_STREAM, // Socket type: Datagram
-       0 // Protocol: default 
-      );
+       0            // Protocol: default
+   );
    if (fd < 0)
    {
       perror("socket");
@@ -46,16 +47,17 @@ int makeTCPServerSocket(int port) {
    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
    sockaddr_in addr{};
-   addr.sin_family = AF_INET; // Internetwork
+   addr.sin_family = AF_INET;              // Internetwork
    addr.sin_addr.s_addr = inet_addr(HOST); // Convert IP address to binary and set
-   addr.sin_port = htons(port); // Correct byte order and set port
+   addr.sin_port = htons(port);            // Correct byte order and set port
    if (bind(fd, (sockaddr *)&addr, sizeof(addr)) < 0)
    {
       perror("bind");
       exit(1);
    }
 
-   if(listen(fd, MAX_BACKLOG)) {
+   if (listen(fd, MAX_BACKLOG))
+   {
       perror("listen");
       exit(1);
    }
@@ -63,7 +65,27 @@ int makeTCPServerSocket(int port) {
    return fd;
 } // socket → setsockopt → bind → listen
 
-int makeTCPClientSocket(int port); // socket → connect to HOST:port
+int makeTCPClientSocket(int port)
+{
+   int fd = socket(AF_INET, SOCK_STREAM, 0);
+   if (fd < 0)
+   {
+      perror("socket");
+      exit(1);
+   }
+   
+   sockaddr_in addr{};
+   addr.sin_family = AF_INET;
+   addr.sin_addr.s_addr = inet_addr(HOST);
+   addr.sin_port = htons(port);
+
+   if (connect(fd, (sockaddr *)&addr, sizeof(addr)) < 0)
+   {
+      perror("connect");
+      exit(1);
+   }
+   return fd;
+}; // socket → connect to HOST:port
 
 // UDP Message
 struct Message
@@ -83,19 +105,18 @@ inline int makeUDPSocket(int port)
    int fd = socket(
        AF_INET,    // Address family: IPv4
        SOCK_DGRAM, // Socket type: Datagram
-       0 // Protocol: default - OS picks UDP 
-      );
+       0           // Protocol: default - OS picks UDP
+   );
    if (fd < 0)
    {
       perror("socket");
       exit(1);
    }
 
-
    sockaddr_in addr{};
-   addr.sin_family = AF_INET; // Internetwork
+   addr.sin_family = AF_INET;              // Internetwork
    addr.sin_addr.s_addr = inet_addr(HOST); // Convert IP address to binary and set
-   addr.sin_port = htons(port); // Correct byte order and set port
+   addr.sin_port = htons(port);            // Correct byte order and set port
    if (bind(fd, (sockaddr *)&addr, sizeof(addr)) < 0)
    {
       perror("bind");
@@ -105,5 +126,17 @@ inline int makeUDPSocket(int port)
 
 } // socket → bind to HOST:port
 
-void udpSend(int sockfd, const Message &msg, int targetPort);
-void udpRecv(int sockfd, Message &msg, sockaddr_in &senderAddr);
+inline void udpSend(int sockfd, const Message &msg, int targetPort)
+{
+   sockaddr_in dest{};
+   dest.sin_family = AF_INET;
+   dest.sin_addr.s_addr = inet_addr(HOST);
+   dest.sin_port = htons(targetPort);
+   sendto(sockfd, &msg, sizeof(msg), 0, (sockaddr *)&dest, sizeof(dest));
+}
+
+inline void udpRecv(int sockfd, Message &msg, sockaddr_in &senderAddr)
+{
+   socklen_t len = sizeof(senderAddr);
+   recvfrom(sockfd, &msg, sizeof(msg), 0, (sockaddr *)&senderAddr, &len);
+}
