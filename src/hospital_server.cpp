@@ -2,120 +2,118 @@
 #include <sys/types.h>
 #include <string.h>
 #include <sys/socket.h>
-#include <netdb.h>
 #include <unistd.h>
+#include "../include/common.h"
 
-#define PORT "5000"    // Port of application
 #define MAX_BACKLOG 10 // Maximum connections server can handle
 #define SERVER_NAME "hospital_server"
 #define BUFFER_SIZE 1024 // Buffer allocated for receiving messages
 
-int main()
+class HospitalServer
 {
-   int status;
-   struct addrinfo hints, *res;
-   int sockfd, clientFd;
-   struct sockaddr_storage their_addr;
-   socklen_t addrSize;
-   char recvBuffer[BUFFER_SIZE];
+public:
+   void loadHospital(const std::string &filepath = "data/hospital.txt");
+   bool isDoctor(const std::string &userHash);
+   std::string getDoctorName(const std::string &userHash);
+   std::string getTreatment(const std::string &illness);
+   std::vector<std::string> getDoctorList();
+   void boot();
+   void run();
+   void handleClient(int clientFd);
 
-   // Starting up message
-   std::cout << "Starting up " << SERVER_NAME << "..." << std::endl;
+private:
+   int tcpSock = -1, udpSock = -1;
+   // ... data members
+};
 
-   // Load up address structs with getaddrinfo()
+bool HospitalServer::isDoctor(const std::string &userHash)
+{
+   std::cout << "isDoctor() called" << std::endl;
+   return false;
+};
 
-   memset(&hints, 0, sizeof hints);
-   hints.ai_family = AF_UNSPEC;     // use IPv4 or IPv6, whichever
-   hints.ai_socktype = SOCK_STREAM; // use TCP
-   hints.ai_flags = AI_PASSIVE;     // use server's IP address
+std::string HospitalServer::getDoctorName(const std::string &userHash)
+{
+   std::cout << "getDoctorName() called" << std::endl;
+   return "";
+};
 
-   status = getaddrinfo(NULL, PORT, &hints, &res);
-   if (status != 0)
-   {
-      std::cout << "❌ Failed to getaddrinfo(). Error: " << status << std::endl;
-      return 1;
-   }
-   else
-   {
-      std::cout << "✅ getaddrinfo() successful" << std::endl;
-   };
+std::string HospitalServer::getTreatment(const std::string &illness)
+{
+   std::cout << "getTreatment() called" << std::endl;
+   return "";
+};
 
-   // Create Socket on port for incoming request
-   sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-   status = bind(sockfd, res->ai_addr, res->ai_addrlen);
-   if (status != 0)
-   {
-      std::cout << "❌ Failed to bind socket. Error: " << status << std::endl;
-      return 1;
-   }
-   else
-   {
-      std::cout << "✅ Binding successful" << std::endl;
-   };
+std::vector<std::string> HospitalServer::getDoctorList()
+{
+   std::cout << "getDoctorList() called" << std::endl;
 
-   // Listen on port
-   status = listen(sockfd, MAX_BACKLOG);
-   if (status != 0)
-   {
-      std::cout << "❌ Failed to listen on port. Error: " << status << std::endl;
-      return 1;
-   }
-   else
-   {
-      std::cout << "✅ Hospital server is up and running." << std::endl;
-   };
+   std::vector<std::string> list;
+   return list;
+};
 
-   // Listen for requests
+void HospitalServer::boot()
+{
+   loadHospital();
+   this->tcpSock = makeTCPServerSocket(PORT_HOSP_TCP);
+   this->udpSock = makeUDPSocket(PORT_HOSP_UDP);
+
+   std::cout << "The Hospital Server is up and running." << std::endl;
+}
+
+void HospitalServer::run()
+{
    while (true)
    {
-      // Wait for incoming connection request and accept
-      addrSize = sizeof their_addr;
-      clientFd = accept(sockfd, (struct sockaddr *)&their_addr, &addrSize);
-
-      // Receive request
-      int bytesRecv = recv(clientFd, recvBuffer, sizeof(recvBuffer), 0);
-      if (bytesRecv > 0)
+      // Blocks until a client connects
+      sockaddr_in clientAddr{};
+      socklen_t clientLen = sizeof(clientAddr);
+      
+      int clientFd = accept(tcpSock, (sockaddr *)&clientAddr, &clientLen);
+      if (clientFd < 0)
       {
-         recvBuffer[bytesRecv] = '\0'; // append null-terminate for printing at end of character array
-         std::cout << "Received: " << recvBuffer << std::endl;
-      }
-      else if (bytesRecv == 0)
-      {
-         std::cout << "Client disconnected" << std::endl;
-         close(clientFd);
-         continue;
-      }
-      else
-      {
-         perror("recv");
-         close(clientFd);
+         perror("accept");
          continue;
       }
 
-      // Send reply
-      const char *msg = "Received message!\n";
-      int len = strlen(msg);
-      int bytesSent = send(clientFd, msg, len, 0);
-      if (bytesSent > 0)
+      // Fork so the parent can immediately accept the next client
+      if (fork() == 0)
       {
-         // std::cout << "Sent: " << msg << std::endl;
-      }
-      else if (bytesSent == 0)
-      {
-         std::cout << "Client disconnected" << std::endl;
+         // --- CHILD PROCESS ---
+         close(tcpSock); // child doesn't need the listening socket
+         handleClient(clientFd);
          close(clientFd);
-         continue;
+         exit(0);
       }
-      else
-      {
-         perror("send");
-         close(clientFd);
-         continue;
-      }
-
-      // Close
-      close(clientFd);
+      // --- PARENT PROCESS ---
+      close(clientFd); // parent doesn't need this client's socket
    }
-
-   return 0;
 }
+
+void HospitalServer::handleClient(int clientFd)
+{
+   Message msg{};
+   while (recv(clientFd, &msg, sizeof(msg), MSG_WAITALL) > 0)
+   {
+      //   if      (strcmp(msg.type, "AUTH")     == 0) doAuthenticate(clientFd, msg);
+      //   else if (strcmp(msg.type, "LOOKUP")   == 0) doLookup(clientFd, msg);
+      // ... other commands
+      memset(&msg, 0, sizeof(msg)); // clear for next message
+   }
+}
+
+void HospitalServer::loadHospital(const std::string &filepath)
+{
+   std::cout << "loadHospital() called" << std::endl;
+}
+
+// Bandaid fix - normally we would separate our header definitions and our main method
+#ifndef DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN // Do not use main if we're using doctest
+
+int main()
+{
+   HospitalServer s;
+   s.boot();
+   s.run();
+}
+#endif
