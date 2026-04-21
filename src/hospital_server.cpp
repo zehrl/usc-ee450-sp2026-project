@@ -5,6 +5,10 @@
 #include <unistd.h>
 #include "../include/common.h"
 
+#include <fstream>
+#include <sstream>
+#include <map>
+
 #define MAX_BACKLOG 10 // Maximum connections server can handle
 #define SERVER_NAME "hospital_server"
 #define BUFFER_SIZE 1024 // Buffer allocated for receiving messages
@@ -23,6 +27,17 @@ public:
 
 private:
    int tcpSock = -1, udpSock = -1;
+
+   struct Doctor
+   {
+      std::string name;
+      std::string hash;
+   };
+
+   std::vector<Doctor> doctors;
+
+   std::map<std::string, std::string> treatments;  // illness → treatment
+
    // ... data members
 };
 
@@ -46,10 +61,14 @@ std::string HospitalServer::getTreatment(const std::string &illness)
 
 std::vector<std::string> HospitalServer::getDoctorList()
 {
-   std::cout << "getDoctorList() called" << std::endl;
+   std::vector<std::string> names;
 
-   std::vector<std::string> list;
-   return list;
+   for (const auto &d : doctors)
+   {
+      names.push_back(d.name);
+   }
+
+   return names;
 };
 
 void HospitalServer::boot()
@@ -68,7 +87,7 @@ void HospitalServer::run()
       // Blocks until a client connects
       sockaddr_in clientAddr{};
       socklen_t clientLen = sizeof(clientAddr);
-      
+
       int clientFd = accept(tcpSock, (sockaddr *)&clientAddr, &clientLen);
       if (clientFd < 0)
       {
@@ -104,7 +123,42 @@ void HospitalServer::handleClient(int clientFd)
 
 void HospitalServer::loadHospital(const std::string &filepath)
 {
-   std::cout << "loadHospital() called" << std::endl;
+   std::ifstream file(filepath);
+   std::string line, section;
+
+   while (std::getline(file, line))
+   {
+      // Determine section of .txt data file
+      if (line == "[Doctors]")
+      {
+         section = "[Doctors]";
+         continue;
+      }
+      if (line == "[Treatments]")
+      {
+         section = "[Treatments]";
+         continue;
+      }
+      if (line.empty())
+      {
+         continue;
+      }
+
+      std::istringstream ss(line);
+
+      if (section == "[Doctors]")
+      {
+         Doctor d;
+         ss >> d.name >> d.hash;
+         doctors.push_back(d);
+      }
+      else if (section == "[Treatments]")
+      {
+         std::string illness, treatment;
+         ss >> illness >> treatment;
+         treatments[illness] = treatment;
+      }
+   }
 }
 
 // Bandaid fix - normally we would separate our header definitions and our main method
