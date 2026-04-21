@@ -65,7 +65,10 @@ std::string HospitalServer::getDoctorName(const std::string &userHash)
 
 std::string HospitalServer::getTreatment(const std::string &illness)
 {
-   std::cout << "getTreatment() called" << std::endl;
+   auto t = treatments.find(illness);
+   if ( t != treatments.end()) {
+      return t->second;
+   }
    return "";
 };
 
