@@ -2,6 +2,11 @@
 #include <string>
 #include "../third_party/sha256.h"
 
+#include <arpa/inet.h> // inet_addr()
+#include <unistd.h>    // close()
+#include <cstdlib>     // exit()
+#include <cstdio>      // perror()
+
 #define PORT_AUTH 21570
 #define PORT_PRESC 22570
 #define PORT_APPT 23570
@@ -9,19 +14,56 @@
 #define PORT_HOSP_TCP 26570
 #define HOST "127.0.0.1"
 
+#define MAX_BACKLOG 10 // Maximum connections server can handle
 
 // SHA-256 helpers
-inline std::string sha256hex(const std::string& input) {
-    return SHA256::hashString(input);  // SHA256 class is in sha256.h
+inline std::string sha256hex(const std::string &input)
+{
+   return SHA256::hashString(input); // SHA256 class is in sha256.h
 }
-inline std::string hashSuffix(const std::string& hash) {
-    if (hash.length() < 5) return hash;
-    return hash.substr(hash.length() - 5);
+inline std::string hashSuffix(const std::string &hash)
+{
+   if (hash.length() < 5)
+      return hash;
+   return hash.substr(hash.length() - 5);
 }
 
 // TCP
-int makeTCPServerSocket(int port);   // socket → setsockopt → bind → listen
-int makeTCPClientSocket(int port);   // socket → connect to HOST:port
+int makeTCPServerSocket(int port) {
+   // Create the socket/file descriptor
+   int fd = socket(
+       AF_INET,    // Address family: IPv4
+       SOCK_STREAM, // Socket type: Datagram
+       0 // Protocol: default 
+      );
+   if (fd < 0)
+   {
+      perror("socket");
+      exit(1);
+   }
+
+   int opt = 1;
+   setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+   sockaddr_in addr{};
+   addr.sin_family = AF_INET; // Internetwork
+   addr.sin_addr.s_addr = inet_addr(HOST); // Convert IP address to binary and set
+   addr.sin_port = htons(port); // Correct byte order and set port
+   if (bind(fd, (sockaddr *)&addr, sizeof(addr)) < 0)
+   {
+      perror("bind");
+      exit(1);
+   }
+
+   if(listen(fd, MAX_BACKLOG)) {
+      perror("listen");
+      exit(1);
+   }
+
+   return fd;
+} // socket → setsockopt → bind → listen
+
+int makeTCPClientSocket(int port); // socket → connect to HOST:port
 
 // UDP Message
 struct Message
@@ -35,7 +77,33 @@ struct Message
 };
 
 // UDP
-int makeUDPSocket(int port);         // socket → bind to HOST:port
-void udpSend(int sockfd, const Message& msg, int targetPort);
-void udpRecv(int sockfd, Message& msg, sockaddr_in& senderAddr);
+inline int makeUDPSocket(int port)
+{
+   // Create the socket/file descriptor
+   int fd = socket(
+       AF_INET,    // Address family: IPv4
+       SOCK_DGRAM, // Socket type: Datagram
+       0 // Protocol: default - OS picks UDP 
+      );
+   if (fd < 0)
+   {
+      perror("socket");
+      exit(1);
+   }
 
+
+   sockaddr_in addr{};
+   addr.sin_family = AF_INET; // Internetwork
+   addr.sin_addr.s_addr = inet_addr(HOST); // Convert IP address to binary and set
+   addr.sin_port = htons(port); // Correct byte order and set port
+   if (bind(fd, (sockaddr *)&addr, sizeof(addr)) < 0)
+   {
+      perror("bind");
+      exit(1);
+   }
+   return fd;
+
+} // socket → bind to HOST:port
+
+void udpSend(int sockfd, const Message &msg, int targetPort);
+void udpRecv(int sockfd, Message &msg, sockaddr_in &senderAddr);
