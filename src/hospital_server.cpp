@@ -54,7 +54,12 @@ bool HospitalServer::isDoctor(const std::string &userHash)
 
 std::string HospitalServer::getDoctorName(const std::string &userHash)
 {
-   std::cout << "getDoctorName() called" << std::endl;
+   for(const auto& d : doctors) {
+      if (d.hash == userHash) {
+         return d.name;
+      }
+   }
+
    return "";
 };
 
