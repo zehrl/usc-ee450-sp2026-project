@@ -27,6 +27,7 @@ public:
 private:
    void handleClient(int clientFd);
    void doAuthenticate(int clientFd, const Message &req);
+   void doLookup(int clientFd, const Message &req);
    Message callAuth(const Message &req);
    Message callAppointment(const Message &req);
    Message callPrescription(const Message &req);
@@ -137,7 +138,8 @@ void HospitalServer::handleClient(int clientFd)
    Message msg{};
    while (recv(clientFd, &msg, sizeof(msg), MSG_WAITALL) > 0)
    {
-      if      (strcmp(msg.type, "AUTH") == 0) doAuthenticate(clientFd, msg);
+      if      (strcmp(msg.type, "AUTH")   == 0) doAuthenticate(clientFd, msg);
+      else if (strcmp(msg.type, "LOOKUP") == 0) doLookup(clientFd, msg);
       memset(&msg, 0, sizeof(msg));
    }
 }
@@ -203,6 +205,24 @@ void HospitalServer::doAuthenticate(int clientFd, const Message &req)
 
    std::cout << "Hospital Server has sent the response from Authentication Server to the client using TCP over port " << PORT_HOSP_TCP << "." << std::endl;
 
+   send(clientFd, &resp, sizeof(resp), 0);
+}
+
+void HospitalServer::doLookup(int clientFd, const Message &req)
+{
+   std::vector<std::string> names = getDoctorList();
+
+   // Pack all doctor names into field1 separated by '|'
+   std::string packed;
+   for (size_t i = 0; i < names.size(); i++)
+   {
+      if (i > 0) packed += "|";
+      packed += names[i];
+   }
+
+   Message resp{};
+   resp.status = 0;
+   strncpy(resp.field1, packed.c_str(), sizeof(resp.field1) - 1);
    send(clientFd, &resp, sizeof(resp), 0);
 }
 

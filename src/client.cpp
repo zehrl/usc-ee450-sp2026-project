@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <cstring>
+#include <sstream>
 #include <sys/socket.h>
 #include <unistd.h>
 #include "../include/common.h"
@@ -91,14 +92,46 @@ void Client::authenticate()
 
 void Client::patientCommandLoop()
 {
+   std::string input;
+   while (true)
+   {
+      std::cout << "\nPlease enter a command: ";
+      std::getline(std::cin, input);
+
+      if (input == "lookup")           cmdLookup();
+      else if (input == "quit")        { close(sockfd); exit(0); }
+      else std::cout << "Unknown command." << std::endl;
+   }
 }
 
 void Client::doctorCommandLoop()
 {
+   std::string input;
+   while (true)
+   {
+      std::cout << "\nPlease enter a command: ";
+      std::getline(std::cin, input);
+
+      if (input == "quit") { close(sockfd); exit(0); }
+      else std::cout << "Unknown command." << std::endl;
+   }
 }
 
 void Client::cmdLookup()
 {
+   Message msg{};
+   strncpy(msg.type, "LOOKUP", sizeof(msg.type));
+   tcpSend(msg);
+
+   Message resp = tcpRecv();
+
+   // Split the '|'-delimited doctor list from field1
+   std::string packed(resp.field1);
+   std::istringstream ss(packed);
+   std::string name;
+   std::cout << "The list of doctors available are: " << std::endl;
+   while (std::getline(ss, name, '|'))
+      std::cout << name << std::endl;
 }
 
 void Client::cmdLookupDoctor(const std::string &doctor)
