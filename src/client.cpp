@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <cstring>
 #include <sys/socket.h>
 #include <unistd.h>
 #include "../include/common.h"
@@ -63,6 +64,29 @@ void Client::run()
 
 void Client::authenticate()
 {
+   Message msg{};
+   strncpy(msg.type,   "AUTH",           sizeof(msg.type));
+   strncpy(msg.field1, userHash.c_str(), sizeof(msg.field1));
+   strncpy(msg.field2, passHash.c_str(), sizeof(msg.field2));
+
+   tcpSend(msg);
+   std::cout << username << " sent an authentication request to the hospital server." << std::endl;
+
+   Message resp = tcpRecv();
+
+   if (resp.status == 1)
+   {
+      std::cout << "The credentials are incorrect. Please try again." << std::endl;
+      close(sockfd);
+      exit(0);
+   }
+
+   isDoctor = (strcmp(resp.field1, "doctor") == 0);
+
+   if (isDoctor)
+      std::cout << username << " received the authentication result. Authentication successful. You have been granted doctor access." << std::endl;
+   else
+      std::cout << username << " received the authentication result. Authentication successful. You have been granted patient access." << std::endl;
 }
 
 void Client::patientCommandLoop()
