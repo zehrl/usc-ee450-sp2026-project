@@ -52,21 +52,47 @@ void PrescriptionServer::run()
 
 void PrescriptionServer::loadPrescriptions(const std::string &filepath)
 {
+   std::ifstream file(filepath);
+   std::string line;
+   while (std::getline(file, line))
+   {
+      if (line.empty()) continue;
+      std::istringstream ss(line);
+      Prescription p;
+      ss >> p.doctorName >> p.patientHash >> p.treatment >> p.frequency;
+      p.found = true;
+      prescriptions.push_back(p);
+   }
 }
 
 void PrescriptionServer::savePrescriptions(const std::string &filepath)
 {
+   std::ofstream file(filepath);
+   for (const auto &p : prescriptions)
+      file << p.doctorName << " " << p.patientHash << " " << p.treatment << " " << p.frequency << "\n";
 }
 
 bool PrescriptionServer::addPrescription(const std::string &doctor, const std::string &patientHash,
                                           const std::string &treatment, const std::string &frequency)
 {
-   return false;
+   Prescription p;
+   p.doctorName  = doctor;
+   p.patientHash = patientHash;
+   p.treatment   = treatment;
+   p.frequency   = frequency;
+   p.found       = true;
+   prescriptions.push_back(p);
+   return true;
 }
 
 PrescriptionServer::Prescription PrescriptionServer::findPrescription(const std::string &patientHash)
 {
-   return Prescription{};
+   for (const auto &p : prescriptions)
+   {
+      if (p.patientHash == patientHash)
+         return p;
+   }
+   return Prescription{};  // found = false by default
 }
 
 void PrescriptionServer::handlePrescribe(Message &msg, sockaddr_in &from) {}
