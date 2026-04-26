@@ -9,20 +9,22 @@ AUTH = authentication_server
 APPT = appointment_server
 PRES = prescription_server
 
+SHA256 = third_party/sha256.cpp
+
 $(CLIENT):
-	$(CXX) $(CXXFLAGS) $(SRC_DIR)/client.cpp -o $(BUILD_DIR)/$(CLIENT)
+	$(CXX) $(CXXFLAGS) -I include -I third_party $(SRC_DIR)/client.cpp $(SHA256) -o $(BUILD_DIR)/$(CLIENT)
 
 $(HOSPITAL):
-	$(CXX) $(CXXFLAGS) $(SRC_DIR)/hospital_server.cpp -o $(BUILD_DIR)/$(HOSPITAL)
+	$(CXX) $(CXXFLAGS) -I include -I third_party $(SRC_DIR)/hospital_server.cpp $(SHA256) -o $(BUILD_DIR)/$(HOSPITAL)
 
 $(AUTH):
-	$(CXX) $(CXXFLAGS) $(SRC_DIR)/authentication_server.cpp -o $(BUILD_DIR)/$(AUTH)
+	$(CXX) $(CXXFLAGS) -I include -I third_party $(SRC_DIR)/authentication_server.cpp $(SHA256) -o $(BUILD_DIR)/$(AUTH)
 
 $(APPT):
-	$(CXX) $(CXXFLAGS) $(SRC_DIR)/appointment_server.cpp -o $(BUILD_DIR)/$(APPT)
+	$(CXX) $(CXXFLAGS) -I include -I third_party $(SRC_DIR)/appointment_server.cpp $(SHA256) -o $(BUILD_DIR)/$(APPT)
 
 $(PRES):
-	$(CXX) $(CXXFLAGS) $(SRC_DIR)/prescription_server.cpp -o $(BUILD_DIR)/$(PRES)
+	$(CXX) $(CXXFLAGS) -I include -I third_party $(SRC_DIR)/prescription_server.cpp $(SHA256) -o $(BUILD_DIR)/$(PRES)
 
 mkbuilddir:
 	mkdir -p $(BUILD_DIR)
