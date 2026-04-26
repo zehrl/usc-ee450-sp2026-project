@@ -131,11 +131,11 @@ TEST_SUITE("AppointmentServer::getPatientIllness") {
         CHECK(s.getPatientIllness("0000000000000000000000000000000000000000000000000000000000000000") == "");
     }
 
-    TEST_CASE("clears the patient from the slot after retrieval (prescribe flow)") {
+    TEST_CASE("does not clear the slot after retrieval") {
         AppointmentServer s;
         s.loadAppointments("data/appointments.txt");
-        s.getPatientIllness(HOUSE_BOOKED_HASH);          // fetch clears the slot
-        CHECK(s.isSlotAvailable("Dr.House", "11:00"));   // slot should now be free
+        s.getPatientIllness(HOUSE_BOOKED_HASH);
+        CHECK_FALSE(s.isSlotAvailable("Dr.House", "11:00"));  // slot still booked
     }
 }
 

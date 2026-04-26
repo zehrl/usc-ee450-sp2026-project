@@ -183,17 +183,12 @@ bool AppointmentServer::cancelSlot(const std::string &patientHash)
 
 std::string AppointmentServer::getPatientIllness(const std::string &patientHash)
 {
-   for (auto &[doctor, slots] : appointmentData)
+   for (const auto &[doctor, slots] : appointmentData)
    {
-      for (auto &slot : slots)
+      for (const auto &slot : slots)
       {
          if (slot.patientHash == patientHash)
-         {
-            std::string illness = slot.illness;
-            slot.patientHash = "";  // clear slot after retrieval (prescribe flow)
-            slot.illness = "";
-            return illness;
-         }
+            return slot.illness;
       }
    }
    return "";
