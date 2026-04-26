@@ -56,7 +56,7 @@ void AppointmentServer::run()
    while (true)
    {
       udpRecv(sockfd, msg, from);
-      // handleRequest dispatch will go here
+      if      (strcmp(msg.type, "LOOKUP_DOC") == 0) handleLookupDoctor(msg, from);
    }
 }
 
@@ -216,7 +216,22 @@ std::string AppointmentServer::getPatientTime(const std::string &patientHash)
    return "";
 }
 
-void AppointmentServer::handleLookupDoctor(Message &msg, sockaddr_in &from) {}
+void AppointmentServer::handleLookupDoctor(Message &msg, sockaddr_in &from)
+{
+   std::string doctorName(msg.field1);
+   std::vector<std::string> slots = getAvailableSlots(doctorName);
+
+   std::string packed;
+   for (size_t i = 0; i < slots.size(); i++)
+   {
+      if (i > 0) packed += "|";
+      packed += slots[i];
+   }
+
+   msg.status = slots.empty() ? 1 : 0;
+   strncpy(msg.field1, packed.c_str(), sizeof(msg.field1) - 1);
+   udpSend(sockfd, msg, ntohs(from.sin_port));
+}
 void AppointmentServer::handleSchedule(Message &msg, sockaddr_in &from) {}
 void AppointmentServer::handleViewAppointment(Message &msg, sockaddr_in &from) {}
 void AppointmentServer::handleCancel(Message &msg, sockaddr_in &from) {}

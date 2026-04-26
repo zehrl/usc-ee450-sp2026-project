@@ -98,8 +98,9 @@ void Client::patientCommandLoop()
       std::cout << "\nPlease enter a command: ";
       std::getline(std::cin, input);
 
-      if (input == "lookup")           cmdLookup();
-      else if (input == "quit")        { close(sockfd); exit(0); }
+      if (input == "lookup")                        cmdLookup();
+      else if (input.rfind("lookup ", 0) == 0)      cmdLookupDoctor(input.substr(7));
+      else if (input == "quit")                      { close(sockfd); exit(0); }
       else std::cout << "Unknown command." << std::endl;
    }
 }
@@ -136,6 +137,25 @@ void Client::cmdLookup()
 
 void Client::cmdLookupDoctor(const std::string &doctor)
 {
+   Message msg{};
+   strncpy(msg.type,   "LOOKUP_DOC",    sizeof(msg.type));
+   strncpy(msg.field1, doctor.c_str(),  sizeof(msg.field1) - 1);
+   tcpSend(msg);
+
+   Message resp = tcpRecv();
+
+   if (resp.status != 0)
+   {
+      std::cout << "Doctor " << doctor << " has no available slots." << std::endl;
+      return;
+   }
+
+   std::string packed(resp.field1);
+   std::istringstream ss(packed);
+   std::string slot;
+   std::cout << "The available slots for " << doctor << " are: " << std::endl;
+   while (std::getline(ss, slot, '|'))
+      std::cout << slot << std::endl;
 }
 
 void Client::cmdSchedule(const std::string &doctor, const std::string &time, const std::string &illness)
