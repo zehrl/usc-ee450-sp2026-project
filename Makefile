@@ -43,6 +43,12 @@ stop:
 	pkill appointment_server || true
 	pkill prescription_server || true
 
+reset:
+	cp data/seed/appointments.txt data/appointments.txt
+	cp data/seed/prescriptions.txt data/prescriptions.txt
+	cp data/seed/users.txt data/users.txt
+	cp data/seed/hospital.txt data/hospital.txt
+
 clean:
 	rm -rf $(BUILD_DIR)/*
 
@@ -74,4 +80,4 @@ test_prescription: mkbuilddir tests/test_prescription.cpp third_party/sha256.cpp
 	$(CXX) $(TEST_FLAGS) tests/test_prescription.cpp third_party/sha256.cpp -o $(BUILD_DIR)/test_prescription
 	./$(BUILD_DIR)/test_prescription
 
-test: test_sha256 test_auth test_hospital test_appointment test_prescription
+test: reset test_sha256 test_auth test_hospital test_appointment test_prescription
