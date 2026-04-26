@@ -100,6 +100,13 @@ void Client::patientCommandLoop()
 
       if (input == "lookup")                        cmdLookup();
       else if (input.rfind("lookup ", 0) == 0)      cmdLookupDoctor(input.substr(7));
+      else if (input.rfind("schedule ", 0) == 0)
+      {
+         std::istringstream ss(input.substr(9));
+         std::string doctor, time, illness;
+         ss >> doctor >> time >> illness;
+         cmdSchedule(doctor, time, illness);
+      }
       else if (input == "quit")                      { close(sockfd); exit(0); }
       else std::cout << "Unknown command." << std::endl;
    }
@@ -160,6 +167,20 @@ void Client::cmdLookupDoctor(const std::string &doctor)
 
 void Client::cmdSchedule(const std::string &doctor, const std::string &time, const std::string &illness)
 {
+   Message msg{};
+   strncpy(msg.type,   "SCHEDULE",       sizeof(msg.type));
+   strncpy(msg.field1, doctor.c_str(),   sizeof(msg.field1) - 1);
+   strncpy(msg.field2, time.c_str(),     sizeof(msg.field2) - 1);
+   strncpy(msg.field3, illness.c_str(),  sizeof(msg.field3) - 1);
+   strncpy(msg.field4, userHash.c_str(), sizeof(msg.field4) - 1);
+   tcpSend(msg);
+
+   Message resp = tcpRecv();
+
+   if (resp.status != 0)
+      std::cout << "The requested slot is not available." << std::endl;
+   else
+      std::cout << "Appointment scheduled with " << doctor << " at " << time << " for " << illness << "." << std::endl;
 }
 
 void Client::cmdViewAppointment()

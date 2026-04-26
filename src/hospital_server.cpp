@@ -29,6 +29,7 @@ private:
    void doAuthenticate(int clientFd, const Message &req);
    void doLookup(int clientFd, const Message &req);
    void doLookupDoctor(int clientFd, const Message &req);
+   void doSchedule(int clientFd, const Message &req);
    Message callAuth(const Message &req);
    Message callAppointment(const Message &req);
    Message callPrescription(const Message &req);
@@ -142,6 +143,7 @@ void HospitalServer::handleClient(int clientFd)
       if      (strcmp(msg.type, "AUTH")       == 0) doAuthenticate(clientFd, msg);
       else if (strcmp(msg.type, "LOOKUP")     == 0) doLookup(clientFd, msg);
       else if (strcmp(msg.type, "LOOKUP_DOC") == 0) doLookupDoctor(clientFd, msg);
+      else if (strcmp(msg.type, "SCHEDULE")   == 0) doSchedule(clientFd, msg);
       memset(&msg, 0, sizeof(msg));
    }
 }
@@ -285,6 +287,25 @@ void HospitalServer::doLookupDoctor(int clientFd, const Message &req)
    {
       std::cout << "Hospital Server has sent the response to the client using TCP over port " << PORT_HOSP_TCP << "." << std::endl;
    }
+
+   send(clientFd, &resp, sizeof(resp), 0);
+}
+
+void HospitalServer::doSchedule(int clientFd, const Message &req)
+{
+   std::string doctor(req.field1);
+   std::string time(req.field2);
+
+   std::cout << "Hospital Server has received a request to schedule an appointment with " << doctor << " at " << time << "." << std::endl;
+
+   Message resp = callAppointment(req);
+
+   std::cout << "Hospital Server has received the response from Appointment Server using UDP over port " << PORT_HOSP_UDP << "." << std::endl;
+
+   if (resp.status != 0)
+      std::cout << "The requested slot is not available." << std::endl;
+   else
+      std::cout << "Hospital Server has sent the result to the client using TCP over port " << PORT_HOSP_TCP << "." << std::endl;
 
    send(clientFd, &resp, sizeof(resp), 0);
 }

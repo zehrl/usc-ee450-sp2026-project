@@ -57,6 +57,7 @@ void AppointmentServer::run()
    {
       udpRecv(sockfd, msg, from);
       if      (strcmp(msg.type, "LOOKUP_DOC") == 0) handleLookupDoctor(msg, from);
+      else if (strcmp(msg.type, "SCHEDULE")   == 0) handleSchedule(msg, from);
    }
 }
 
@@ -107,6 +108,14 @@ void AppointmentServer::loadAppointments(const std::string &filepath)
 
 void AppointmentServer::saveAppointments(const std::string &filepath)
 {
+   std::ofstream file(filepath);
+   for (const auto &[doctor, slots] : appointmentData)
+   {
+      file << doctor << "\n";
+      for (const auto &slot : slots)
+         file << slot.time << " " << slot.patientHash << " " << slot.illness << "\n";
+      file << "\n";
+   }
 }
 
 bool AppointmentServer::isSlotAvailable(const std::string &doctorName, const std::string &time)
@@ -232,7 +241,20 @@ void AppointmentServer::handleLookupDoctor(Message &msg, sockaddr_in &from)
    strncpy(msg.field1, packed.c_str(), sizeof(msg.field1) - 1);
    udpSend(sockfd, msg, ntohs(from.sin_port));
 }
-void AppointmentServer::handleSchedule(Message &msg, sockaddr_in &from) {}
+void AppointmentServer::handleSchedule(Message &msg, sockaddr_in &from)
+{
+   std::string doctor(msg.field1);
+   std::string time(msg.field2);
+   std::string illness(msg.field3);
+   std::string patientHash(msg.field4);
+
+   bool ok = bookSlot(doctor, time, patientHash, illness);
+   msg.status = ok ? 0 : 1;
+
+   if (ok) saveAppointments();
+
+   udpSend(sockfd, msg, ntohs(from.sin_port));
+}
 void AppointmentServer::handleViewAppointment(Message &msg, sockaddr_in &from) {}
 void AppointmentServer::handleCancel(Message &msg, sockaddr_in &from) {}
 void AppointmentServer::handleViewAppointments(Message &msg, sockaddr_in &from) {}
