@@ -9,10 +9,10 @@
 #include "../src/authentication_server.cpp"
 
 TEST_SUITE("AuthServer::loadUsers") {
-    TEST_CASE("loads all 53 entries from users.txt") {
+    TEST_CASE("loads all 54 entries from users.txt") {
         AuthServer s;
         s.loadUsers("data/users.txt");
-        CHECK(s.userCount() == 53);
+        CHECK(s.userCount() == 54);
     }
 
     TEST_CASE("each entry has two non-empty 64-char hashes") {
