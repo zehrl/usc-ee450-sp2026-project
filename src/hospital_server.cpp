@@ -26,6 +26,11 @@ public:
 
 private:
    void handleClient(int clientFd);
+   void doAuthenticate(int clientFd, const Message &req);
+   Message callAuth(const Message &req);
+   Message callAppointment(const Message &req);
+   Message callPrescription(const Message &req);
+
    int tcpSock = -1, udpSock = -1;
 
    struct Doctor
@@ -132,11 +137,73 @@ void HospitalServer::handleClient(int clientFd)
    Message msg{};
    while (recv(clientFd, &msg, sizeof(msg), MSG_WAITALL) > 0)
    {
-      //   if      (strcmp(msg.type, "AUTH")     == 0) doAuthenticate(clientFd, msg);
-      //   else if (strcmp(msg.type, "LOOKUP")   == 0) doLookup(clientFd, msg);
-      // ... other commands
-      memset(&msg, 0, sizeof(msg)); // clear for next message
+      if      (strcmp(msg.type, "AUTH") == 0) doAuthenticate(clientFd, msg);
+      memset(&msg, 0, sizeof(msg));
    }
+}
+
+Message HospitalServer::callAuth(const Message &req)
+{
+   Message msg = req;
+   udpSend(udpSock, msg, PORT_AUTH);
+   sockaddr_in from{};
+   udpRecv(udpSock, msg, from);
+   return msg;
+}
+
+Message HospitalServer::callAppointment(const Message &req)
+{
+   Message msg = req;
+   udpSend(udpSock, msg, PORT_APPT);
+   sockaddr_in from{};
+   udpRecv(udpSock, msg, from);
+   return msg;
+}
+
+Message HospitalServer::callPrescription(const Message &req)
+{
+   Message msg = req;
+   udpSend(udpSock, msg, PORT_PRESC);
+   sockaddr_in from{};
+   udpRecv(udpSock, msg, from);
+   return msg;
+}
+
+void HospitalServer::doAuthenticate(int clientFd, const Message &req)
+{
+   std::string suffix = hashSuffix(req.field1);
+
+   std::cout << "Hospital Server received an authentication request from a user with hash suffix " << suffix << "." << std::endl;
+
+   Message resp = callAuth(req);
+
+   std::cout << "Hospital Server has sent an authentication request to the Authentication Server." << std::endl;
+   std::cout << "Hospital server has received the response from the authentication server using UDP over port " << PORT_HOSP_UDP << "." << std::endl;
+
+   if (resp.status != 0)
+   {
+      // Authentication failed — send failure response back to client
+      send(clientFd, &resp, sizeof(resp), 0);
+      return;
+   }
+
+   std::cout << "User with a hash suffix " << suffix << " has been granted access to the system. Determining the access of the user." << std::endl;
+
+   bool doctor = isDoctor(req.field1);
+   if (doctor)
+   {
+      strncpy(resp.field1, "doctor", sizeof(resp.field1));
+      std::cout << "User with hash suffix " << suffix << " will be granted doctor access." << std::endl;
+   }
+   else
+   {
+      strncpy(resp.field1, "patient", sizeof(resp.field1));
+      std::cout << "User with hash " << suffix << " will be granted patient access." << std::endl;
+   }
+
+   std::cout << "Hospital Server has sent the response from Authentication Server to the client using TCP over port " << PORT_HOSP_TCP << "." << std::endl;
+
+   send(clientFd, &resp, sizeof(resp), 0);
 }
 
 void HospitalServer::loadHospital(const std::string &filepath)
