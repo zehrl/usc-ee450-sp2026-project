@@ -100,6 +100,7 @@ void Client::patientCommandLoop()
 
       if (input == "lookup")                        cmdLookup();
       else if (input.rfind("lookup ", 0) == 0)      cmdLookupDoctor(input.substr(7));
+      else if (input == "view_appointment")          cmdViewAppointment();
       else if (input.rfind("schedule ", 0) == 0)
       {
          std::istringstream ss(input.substr(9));
@@ -185,6 +186,22 @@ void Client::cmdSchedule(const std::string &doctor, const std::string &time, con
 
 void Client::cmdViewAppointment()
 {
+   Message msg{};
+   strncpy(msg.type,   "VIEW_APPT",     sizeof(msg.type));
+   strncpy(msg.field1, userHash.c_str(), sizeof(msg.field1) - 1);
+   tcpSend(msg);
+
+   Message resp = tcpRecv();
+
+   if (resp.status != 0)
+   {
+      std::cout << "You have no appointment scheduled." << std::endl;
+      return;
+   }
+
+   std::cout << "Your appointment is with " << resp.field1
+             << " at " << resp.field2
+             << " for " << resp.field3 << "." << std::endl;
 }
 
 void Client::cmdCancel()

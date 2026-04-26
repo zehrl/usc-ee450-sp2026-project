@@ -58,6 +58,7 @@ void AppointmentServer::run()
       udpRecv(sockfd, msg, from);
       if      (strcmp(msg.type, "LOOKUP_DOC") == 0) handleLookupDoctor(msg, from);
       else if (strcmp(msg.type, "SCHEDULE")   == 0) handleSchedule(msg, from);
+      else if (strcmp(msg.type, "VIEW_APPT") == 0) handleViewAppointment(msg, from);
    }
 }
 
@@ -250,7 +251,27 @@ void AppointmentServer::handleSchedule(Message &msg, sockaddr_in &from)
 
    udpSend(sockfd, msg, ntohs(from.sin_port));
 }
-void AppointmentServer::handleViewAppointment(Message &msg, sockaddr_in &from) {}
+void AppointmentServer::handleViewAppointment(Message &msg, sockaddr_in &from)
+{
+   std::string patientHash(msg.field1);
+   std::string doctor  = getPatientDoctor(patientHash);
+   std::string time    = getPatientTime(patientHash);
+   std::string illness = getPatientIllness(patientHash);
+
+   if (doctor.empty())
+   {
+      msg.status = 1;
+   }
+   else
+   {
+      msg.status = 0;
+      strncpy(msg.field1, doctor.c_str(),  sizeof(msg.field1) - 1);
+      strncpy(msg.field2, time.c_str(),    sizeof(msg.field2) - 1);
+      strncpy(msg.field3, illness.c_str(), sizeof(msg.field3) - 1);
+   }
+
+   udpSend(sockfd, msg, ntohs(from.sin_port));
+}
 void AppointmentServer::handleCancel(Message &msg, sockaddr_in &from) {}
 void AppointmentServer::handleViewAppointments(Message &msg, sockaddr_in &from) {}
 void AppointmentServer::handleGetIllness(Message &msg, sockaddr_in &from) {}
