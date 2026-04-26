@@ -74,7 +74,7 @@ void AuthServer::boot()
 {
    loadUsers();
    sockFd = makeUDPSocket(PORT_AUTH);
-   std::cout << "The Authentication Server is up and running." << std::endl;
+   std::cout << "Authentication Server is up and running using UDP on port " << PORT_AUTH << "." << std::endl;
 }
 
 void AuthServer::run()

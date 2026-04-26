@@ -95,7 +95,7 @@ void HospitalServer::boot()
    this->tcpSock = makeTCPServerSocket(PORT_HOSP_TCP);
    this->udpSock = makeUDPSocket(PORT_HOSP_UDP);
 
-   std::cout << "The Hospital Server is up and running." << std::endl;
+   std::cout << "Hospital Server is up and running using UDP on port " << PORT_HOSP_UDP << "." << std::endl;
 }
 
 void HospitalServer::run()

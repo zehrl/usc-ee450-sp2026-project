@@ -36,7 +36,7 @@ void PrescriptionServer::boot()
 {
    loadPrescriptions();
    sockfd = makeUDPSocket(PORT_PRESC);
-   std::cout << "The Prescription Server is up and running." << std::endl;
+   std::cout << "Prescription Server is up and running using UDP on port " << PORT_PRESC << "." << std::endl;
 }
 
 void PrescriptionServer::run()

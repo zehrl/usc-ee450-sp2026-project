@@ -46,7 +46,7 @@ void AppointmentServer::boot()
 {
    loadAppointments();
    sockfd = makeUDPSocket(PORT_APPT);
-   std::cout << "The Appointment Server is up and running." << std::endl;
+   std::cout << "Appointment Server is up and running using UDP on port " << PORT_APPT << "." << std::endl;
 }
 
 void AppointmentServer::run()
