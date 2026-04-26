@@ -141,26 +141,78 @@ std::vector<std::string> AppointmentServer::getAvailableSlots(const std::string 
 bool AppointmentServer::bookSlot(const std::string &doctorName, const std::string &time,
                                  const std::string &patientHash, const std::string &illness)
 {
+   if (!isSlotAvailable(doctorName, time)) return false;
+
+   for (auto &slot : appointmentData[doctorName])
+   {
+      if (slot.time == time)
+      {
+         slot.patientHash = patientHash;
+         slot.illness = illness;
+         return true;
+      }
+   }
    return false;
 }
 
 bool AppointmentServer::cancelSlot(const std::string &patientHash)
 {
+   for (auto &[doctor, slots] : appointmentData)
+   {
+      for (auto &slot : slots)
+      {
+         if (slot.patientHash == patientHash)
+         {
+            slot.patientHash = "";
+            slot.illness = "";
+            return true;
+         }
+      }
+   }
    return false;
 }
 
 std::string AppointmentServer::getPatientIllness(const std::string &patientHash)
 {
+   for (auto &[doctor, slots] : appointmentData)
+   {
+      for (auto &slot : slots)
+      {
+         if (slot.patientHash == patientHash)
+         {
+            std::string illness = slot.illness;
+            slot.patientHash = "";  // clear slot after retrieval (prescribe flow)
+            slot.illness = "";
+            return illness;
+         }
+      }
+   }
    return "";
 }
 
 std::string AppointmentServer::getPatientDoctor(const std::string &patientHash)
 {
+   for (const auto &[doctor, slots] : appointmentData)
+   {
+      for (const auto &slot : slots)
+      {
+         if (slot.patientHash == patientHash)
+            return doctor;
+      }
+   }
    return "";
 }
 
 std::string AppointmentServer::getPatientTime(const std::string &patientHash)
 {
+   for (const auto &[doctor, slots] : appointmentData)
+   {
+      for (const auto &slot : slots)
+      {
+         if (slot.patientHash == patientHash)
+            return slot.time;
+      }
+   }
    return "";
 }
 
