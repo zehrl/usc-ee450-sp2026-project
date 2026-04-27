@@ -101,6 +101,7 @@ void Client::patientCommandLoop()
       if (input == "lookup")                        cmdLookup();
       else if (input.rfind("lookup ", 0) == 0)      cmdLookupDoctor(input.substr(7));
       else if (input == "view_appointment")          cmdViewAppointment();
+      else if (input == "view_prescription")         cmdViewPrescription();
       else if (input == "cancel")                    cmdCancel();
       else if (input.rfind("schedule ", 0) == 0)
       {
@@ -122,7 +123,8 @@ void Client::doctorCommandLoop()
       std::cout << "\nPlease enter a command: ";
       std::getline(std::cin, input);
 
-      if (input == "view_appointments")              cmdViewAppointments();
+      if (input == "view_appointments")                    cmdViewAppointments();
+      else if (input.rfind("view_prescription ", 0) == 0)  cmdViewPrescriptionDoctor(input.substr(18));
       else if (input.rfind("prescribe ", 0) == 0)
       {
          std::istringstream ss(input.substr(10));
@@ -230,6 +232,19 @@ void Client::cmdCancel()
 
 void Client::cmdViewPrescription()
 {
+   Message msg{};
+   strncpy(msg.type,   "VIEW_PRESCRIPTION", sizeof(msg.type));
+   strncpy(msg.field1, userHash.c_str(),    sizeof(msg.field1) - 1);
+   tcpSend(msg);
+
+   Message resp = tcpRecv();
+
+   if (resp.status != 0)
+      std::cout << "No prescription found." << std::endl;
+   else
+      std::cout << "Your prescription: " << resp.field2
+                << " prescribed by " << resp.field1
+                << ", take " << resp.field3 << "." << std::endl;
 }
 
 void Client::cmdViewAppointments()
@@ -278,6 +293,20 @@ void Client::cmdPrescribe(const std::string &patient, const std::string &frequen
 
 void Client::cmdViewPrescriptionDoctor(const std::string &patient)
 {
+   Message msg{};
+   strncpy(msg.type,   "VIEW_PRESCRIPTION", sizeof(msg.type));
+   strncpy(msg.field1, patient.c_str(),     sizeof(msg.field1) - 1);  // hash suffix
+   strncpy(msg.field2, "doctor",            sizeof(msg.field2) - 1);  // flag for resolution
+   tcpSend(msg);
+
+   Message resp = tcpRecv();
+
+   if (resp.status != 0)
+      std::cout << "No prescription found for that patient." << std::endl;
+   else
+      std::cout << "Patient prescription: " << resp.field2
+                << " prescribed by " << resp.field1
+                << ", take " << resp.field3 << "." << std::endl;
 }
 
 void Client::tcpSend(const Message &msg)

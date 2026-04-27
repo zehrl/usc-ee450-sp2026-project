@@ -106,7 +106,26 @@ void PrescriptionServer::handlePrescribe(Message &msg, sockaddr_in &from)
 
 void PrescriptionServer::handleViewPrescription(Message &msg, sockaddr_in &from)
 {
-   Prescription p = findPrescription(msg.field1);
+   std::string key(msg.field1);
+   Prescription p;
+
+   if (key.length() == 5)
+   {
+      // Doctor lookup by hash suffix
+      for (const auto &entry : prescriptions)
+      {
+         if (hashSuffix(entry.patientHash) == key)
+         {
+            p = entry;
+            break;
+         }
+      }
+   }
+   else
+   {
+      p = findPrescription(key);
+   }
+
    msg.status = p.found ? 0 : 1;
    if (p.found)
    {

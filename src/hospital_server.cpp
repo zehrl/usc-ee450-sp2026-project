@@ -34,6 +34,7 @@ private:
    void doCancel(int clientFd, const Message &req);
    void doViewAppointments(int clientFd, const Message &req);
    void doPrescribe(int clientFd, const Message &req);
+   void doViewPrescription(int clientFd, const Message &req);
    Message callAuth(const Message &req);
    Message callAppointment(const Message &req);
    Message callPrescription(const Message &req);
@@ -151,7 +152,8 @@ void HospitalServer::handleClient(int clientFd)
       else if (strcmp(msg.type, "VIEW_APPT")  == 0) doViewAppointment(clientFd, msg);
       else if (strcmp(msg.type, "CANCEL")       == 0) doCancel(clientFd, msg);
       else if (strcmp(msg.type, "VIEW_APPTS")  == 0) doViewAppointments(clientFd, msg);
-      else if (strcmp(msg.type, "PRESCRIBE")   == 0) doPrescribe(clientFd, msg);
+      else if (strcmp(msg.type, "PRESCRIBE")        == 0) doPrescribe(clientFd, msg);
+      else if (strcmp(msg.type, "VIEW_PRESCRIPTION") == 0) doViewPrescription(clientFd, msg);
       memset(&msg, 0, sizeof(msg));
    }
 }
@@ -410,6 +412,18 @@ void HospitalServer::doPrescribe(int clientFd, const Message &req)
    std::cout << "Hospital Server has sent the result to the client using TCP over port " << PORT_HOSP_TCP << "." << std::endl;
 
    send(clientFd, &prescResp, sizeof(prescResp), 0);
+}
+
+void HospitalServer::doViewPrescription(int clientFd, const Message &req)
+{
+   std::cout << "Hospital Server has received a request to view a prescription." << std::endl;
+
+   Message resp = callPrescription(req);
+
+   std::cout << "Hospital Server has received the response from Prescription Server using UDP over port " << PORT_HOSP_UDP << "." << std::endl;
+   std::cout << "Hospital Server has sent the result to the client using TCP over port " << PORT_HOSP_TCP << "." << std::endl;
+
+   send(clientFd, &resp, sizeof(resp), 0);
 }
 
 // Bandaid fix - normally we would separate our header definitions and our main method
