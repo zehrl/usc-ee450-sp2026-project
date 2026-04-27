@@ -101,6 +101,7 @@ void Client::patientCommandLoop()
       if (input == "lookup")                        cmdLookup();
       else if (input.rfind("lookup ", 0) == 0)      cmdLookupDoctor(input.substr(7));
       else if (input == "view_appointment")          cmdViewAppointment();
+      else if (input == "cancel")                    cmdCancel();
       else if (input.rfind("schedule ", 0) == 0)
       {
          std::istringstream ss(input.substr(9));
@@ -206,6 +207,17 @@ void Client::cmdViewAppointment()
 
 void Client::cmdCancel()
 {
+   Message msg{};
+   strncpy(msg.type,   "CANCEL",         sizeof(msg.type));
+   strncpy(msg.field1, userHash.c_str(), sizeof(msg.field1) - 1);
+   tcpSend(msg);
+
+   Message resp = tcpRecv();
+
+   if (resp.status != 0)
+      std::cout << "You have no appointment to cancel." << std::endl;
+   else
+      std::cout << "Your appointment has been cancelled." << std::endl;
 }
 
 void Client::cmdViewPrescription()

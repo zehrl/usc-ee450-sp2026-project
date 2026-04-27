@@ -59,6 +59,7 @@ void AppointmentServer::run()
       if      (strcmp(msg.type, "LOOKUP_DOC") == 0) handleLookupDoctor(msg, from);
       else if (strcmp(msg.type, "SCHEDULE")   == 0) handleSchedule(msg, from);
       else if (strcmp(msg.type, "VIEW_APPT") == 0) handleViewAppointment(msg, from);
+      else if (strcmp(msg.type, "CANCEL")    == 0) handleCancel(msg, from);
    }
 }
 
@@ -272,7 +273,14 @@ void AppointmentServer::handleViewAppointment(Message &msg, sockaddr_in &from)
 
    udpSend(sockfd, msg, ntohs(from.sin_port));
 }
-void AppointmentServer::handleCancel(Message &msg, sockaddr_in &from) {}
+void AppointmentServer::handleCancel(Message &msg, sockaddr_in &from)
+{
+   std::string patientHash(msg.field1);
+   bool ok = cancelSlot(patientHash);
+   msg.status = ok ? 0 : 1;
+   if (ok) saveAppointments();
+   udpSend(sockfd, msg, ntohs(from.sin_port));
+}
 void AppointmentServer::handleViewAppointments(Message &msg, sockaddr_in &from) {}
 void AppointmentServer::handleGetIllness(Message &msg, sockaddr_in &from) {}
 
