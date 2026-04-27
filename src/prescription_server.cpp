@@ -142,7 +142,10 @@ void PrescriptionServer::handleViewPrescription(Message &msg, sockaddr_in &from)
    msg.status = p.found ? 0 : 1;
    if (p.found)
    {
-      std::cout << "A prescription exists for this user." << std::endl;
+      if (p.frequency == "None")
+         std::cout << "There are no current prescriptions for this user." << std::endl;
+      else
+         std::cout << "A prescription exists for this user." << std::endl;
       strncpy(msg.field1, p.doctorName.c_str(), sizeof(msg.field1) - 1);
       strncpy(msg.field2, p.treatment.c_str(),  sizeof(msg.field2) - 1);
       strncpy(msg.field3, p.frequency.c_str(),  sizeof(msg.field3) - 1);
