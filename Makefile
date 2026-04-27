@@ -49,6 +49,8 @@ reset:
 	cp data/seed/users.txt data/users.txt
 	cp data/seed/hospital.txt data/hospital.txt
 
+restart: stop reset all
+
 clean:
 	rm -rf $(BUILD_DIR)/*
 
