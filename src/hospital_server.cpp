@@ -33,6 +33,7 @@ private:
    void doViewAppointment(int clientFd, const Message &req);
    void doCancel(int clientFd, const Message &req);
    void doViewAppointments(int clientFd, const Message &req);
+   void doPrescribe(int clientFd, const Message &req);
    Message callAuth(const Message &req);
    Message callAppointment(const Message &req);
    Message callPrescription(const Message &req);
@@ -150,6 +151,7 @@ void HospitalServer::handleClient(int clientFd)
       else if (strcmp(msg.type, "VIEW_APPT")  == 0) doViewAppointment(clientFd, msg);
       else if (strcmp(msg.type, "CANCEL")       == 0) doCancel(clientFd, msg);
       else if (strcmp(msg.type, "VIEW_APPTS")  == 0) doViewAppointments(clientFd, msg);
+      else if (strcmp(msg.type, "PRESCRIBE")   == 0) doPrescribe(clientFd, msg);
       memset(&msg, 0, sizeof(msg));
    }
 }
@@ -358,6 +360,56 @@ void HospitalServer::doViewAppointments(int clientFd, const Message &req)
    std::cout << "Hospital Server has sent the result to the client using TCP over port " << PORT_HOSP_TCP << "." << std::endl;
 
    send(clientFd, &resp, sizeof(resp), 0);
+}
+
+void HospitalServer::doPrescribe(int clientFd, const Message &req)
+{
+   std::string suffix(req.field1);
+   std::string frequency(req.field2);
+   std::string doctorName = getDoctorName(req.field3);
+
+   std::cout << "Hospital Server has received a prescribe request from " << doctorName << "." << std::endl;
+
+   // Step 1: get illness + full patientHash from AppointmentServer
+   Message getMsg{};
+   strncpy(getMsg.type,   "GET_ILLNESS", sizeof(getMsg.type));
+   strncpy(getMsg.field1, suffix.c_str(), sizeof(getMsg.field1) - 1);
+   Message illnessResp = callAppointment(getMsg);
+
+   if (illnessResp.status != 0)
+   {
+      std::cout << "No appointment found for patient with hash suffix " << suffix << "." << std::endl;
+      Message resp{};
+      resp.status = 1;
+      send(clientFd, &resp, sizeof(resp), 0);
+      return;
+   }
+
+   std::string illness(illnessResp.field1);
+   std::string patientHash(illnessResp.field2);
+   std::string treatment = getTreatment(illness);
+
+   std::cout << "Hospital Server has received illness info from Appointment Server using UDP over port " << PORT_HOSP_UDP << "." << std::endl;
+
+   // Step 2: cancel the appointment slot
+   Message cancelMsg{};
+   strncpy(cancelMsg.type,   "CANCEL",           sizeof(cancelMsg.type));
+   strncpy(cancelMsg.field1, patientHash.c_str(), sizeof(cancelMsg.field1) - 1);
+   callAppointment(cancelMsg);
+
+   // Step 3: send prescription to PrescriptionServer
+   Message prescMsg{};
+   strncpy(prescMsg.type,   "PRESCRIBE",          sizeof(prescMsg.type));
+   strncpy(prescMsg.field1, doctorName.c_str(),   sizeof(prescMsg.field1) - 1);
+   strncpy(prescMsg.field2, patientHash.c_str(),  sizeof(prescMsg.field2) - 1);
+   strncpy(prescMsg.field3, treatment.c_str(),    sizeof(prescMsg.field3) - 1);
+   strncpy(prescMsg.field4, frequency.c_str(),    sizeof(prescMsg.field4) - 1);
+   Message prescResp = callPrescription(prescMsg);
+
+   std::cout << "Hospital Server has sent the prescription to Prescription Server using UDP over port " << PORT_HOSP_UDP << "." << std::endl;
+   std::cout << "Hospital Server has sent the result to the client using TCP over port " << PORT_HOSP_TCP << "." << std::endl;
+
+   send(clientFd, &prescResp, sizeof(prescResp), 0);
 }
 
 // Bandaid fix - normally we would separate our header definitions and our main method

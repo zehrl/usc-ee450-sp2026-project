@@ -60,7 +60,8 @@ void AppointmentServer::run()
       else if (strcmp(msg.type, "SCHEDULE")   == 0) handleSchedule(msg, from);
       else if (strcmp(msg.type, "VIEW_APPT") == 0) handleViewAppointment(msg, from);
       else if (strcmp(msg.type, "CANCEL")      == 0) handleCancel(msg, from);
-      else if (strcmp(msg.type, "VIEW_APPTS") == 0) handleViewAppointments(msg, from);
+      else if (strcmp(msg.type, "VIEW_APPTS")  == 0) handleViewAppointments(msg, from);
+      else if (strcmp(msg.type, "GET_ILLNESS") == 0) handleGetIllness(msg, from);
    }
 }
 
@@ -308,7 +309,28 @@ void AppointmentServer::handleViewAppointments(Message &msg, sockaddr_in &from)
    strncpy(msg.field1, packed.c_str(), sizeof(msg.field1) - 1);
    udpSend(sockfd, msg, ntohs(from.sin_port));
 }
-void AppointmentServer::handleGetIllness(Message &msg, sockaddr_in &from) {}
+void AppointmentServer::handleGetIllness(Message &msg, sockaddr_in &from)
+{
+   std::string suffix(msg.field1);
+
+   for (const auto &[doctor, slots] : appointmentData)
+   {
+      for (const auto &slot : slots)
+      {
+         if (!slot.patientHash.empty() && hashSuffix(slot.patientHash) == suffix)
+         {
+            msg.status = 0;
+            strncpy(msg.field1, slot.illness.c_str(),     sizeof(msg.field1) - 1);
+            strncpy(msg.field2, slot.patientHash.c_str(), sizeof(msg.field2) - 1);
+            udpSend(sockfd, msg, ntohs(from.sin_port));
+            return;
+         }
+      }
+   }
+
+   msg.status = 1;
+   udpSend(sockfd, msg, ntohs(from.sin_port));
+}
 
 #ifndef DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 int main()

@@ -123,6 +123,13 @@ void Client::doctorCommandLoop()
       std::getline(std::cin, input);
 
       if (input == "view_appointments")              cmdViewAppointments();
+      else if (input.rfind("prescribe ", 0) == 0)
+      {
+         std::istringstream ss(input.substr(10));
+         std::string suffix, frequency;
+         ss >> suffix >> frequency;
+         cmdPrescribe(suffix, frequency);
+      }
       else if (input == "quit")                      { close(sockfd); exit(0); }
       else std::cout << "Unknown command." << std::endl;
    }
@@ -254,6 +261,19 @@ void Client::cmdViewAppointments()
 
 void Client::cmdPrescribe(const std::string &patient, const std::string &frequency)
 {
+   Message msg{};
+   strncpy(msg.type,   "PRESCRIBE",        sizeof(msg.type));
+   strncpy(msg.field1, patient.c_str(),    sizeof(msg.field1) - 1);  // hash suffix
+   strncpy(msg.field2, frequency.c_str(),  sizeof(msg.field2) - 1);
+   strncpy(msg.field3, userHash.c_str(),   sizeof(msg.field3) - 1);  // doctor's hash
+   tcpSend(msg);
+
+   Message resp = tcpRecv();
+
+   if (resp.status != 0)
+      std::cout << "Prescription failed. No appointment found for that patient." << std::endl;
+   else
+      std::cout << "Prescription issued successfully." << std::endl;
 }
 
 void Client::cmdViewPrescriptionDoctor(const std::string &patient)

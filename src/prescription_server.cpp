@@ -46,7 +46,8 @@ void PrescriptionServer::run()
    while (true)
    {
       udpRecv(sockfd, msg, from);
-      // handleRequest dispatch will go here
+      if      (strcmp(msg.type, "PRESCRIBE")        == 0) handlePrescribe(msg, from);
+      else if (strcmp(msg.type, "VIEW_PRESCRIPTION") == 0) handleViewPrescription(msg, from);
    }
 }
 
@@ -95,8 +96,26 @@ PrescriptionServer::Prescription PrescriptionServer::findPrescription(const std:
    return Prescription{};  // found = false by default
 }
 
-void PrescriptionServer::handlePrescribe(Message &msg, sockaddr_in &from) {}
-void PrescriptionServer::handleViewPrescription(Message &msg, sockaddr_in &from) {}
+void PrescriptionServer::handlePrescribe(Message &msg, sockaddr_in &from)
+{
+   addPrescription(msg.field1, msg.field2, msg.field3, msg.field4);
+   savePrescriptions();
+   msg.status = 0;
+   udpSend(sockfd, msg, ntohs(from.sin_port));
+}
+
+void PrescriptionServer::handleViewPrescription(Message &msg, sockaddr_in &from)
+{
+   Prescription p = findPrescription(msg.field1);
+   msg.status = p.found ? 0 : 1;
+   if (p.found)
+   {
+      strncpy(msg.field1, p.doctorName.c_str(), sizeof(msg.field1) - 1);
+      strncpy(msg.field2, p.treatment.c_str(),  sizeof(msg.field2) - 1);
+      strncpy(msg.field3, p.frequency.c_str(),  sizeof(msg.field3) - 1);
+   }
+   udpSend(sockfd, msg, ntohs(from.sin_port));
+}
 
 #ifndef DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 int main()
