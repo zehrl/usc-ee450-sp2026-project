@@ -63,11 +63,22 @@ void AuthServer::loadUsers(const std::string &filepath)
 
 void AuthServer::handleRequest(Message &msg, sockaddr_in &from)
 {
-    if (strcmp(msg.type, "AUTH") == 0) // ensure it's for auth server
-    {
-        msg.status = authenticate(msg.field1, msg.field2) ? 0 : 1;  // 0 - success, 1 - failure
-        udpSend(sockFd, msg, ntohs(from.sin_port));
-    }
+   if (strcmp(msg.type, "AUTH") != 0) return;
+
+   std::string suffix = hashSuffix(std::string(msg.field1));
+   std::cout << "Authentication Server has received an authentication request for a user with hash suffix: " << suffix << "." << std::endl;
+
+   bool ok = authenticate(msg.field1, msg.field2);
+   msg.status = ok ? 0 : 1;
+
+   if (ok)
+      std::cout << "Authentication succeeded for a user with hash suffix: " << suffix << "." << std::endl;
+   else
+      std::cout << "Authentication failed for a user with hash suffix: " << suffix << "." << std::endl;
+
+   std::cout << "The Authentication Server has sent the authentication result to the Hospital Server." << std::endl;
+
+   udpSend(sockFd, msg, ntohs(from.sin_port));
 }
 
 void AuthServer::boot()

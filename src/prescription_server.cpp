@@ -98,8 +98,17 @@ PrescriptionServer::Prescription PrescriptionServer::findPrescription(const std:
 
 void PrescriptionServer::handlePrescribe(Message &msg, sockaddr_in &from)
 {
+   std::string doctorName(msg.field1);
+   std::string suffix = hashSuffix(std::string(msg.field2));
+
+   std::cout << "Prescription Server has received a request from " << doctorName
+             << " to prescribe the user with hash suffix " << suffix << "." << std::endl;
+
    addPrescription(msg.field1, msg.field2, msg.field3, msg.field4);
    savePrescriptions();
+
+   std::cout << "Successfully saved the prescription details for user with hash suffix: " << suffix << "." << std::endl;
+
    msg.status = 0;
    udpSend(sockfd, msg, ntohs(from.sin_port));
 }
@@ -108,10 +117,11 @@ void PrescriptionServer::handleViewPrescription(Message &msg, sockaddr_in &from)
 {
    std::string key(msg.field1);
    Prescription p;
+   std::string suffix;
 
    if (key.length() == 5)
    {
-      // Doctor lookup by hash suffix
+      suffix = key;
       for (const auto &entry : prescriptions)
       {
          if (hashSuffix(entry.patientHash) == key)
@@ -123,15 +133,23 @@ void PrescriptionServer::handleViewPrescription(Message &msg, sockaddr_in &from)
    }
    else
    {
+      suffix = hashSuffix(key);
       p = findPrescription(key);
    }
+
+   std::cout << "The prescription server has received a request to view the prescription for the user with hash suffix: " << suffix << "." << std::endl;
 
    msg.status = p.found ? 0 : 1;
    if (p.found)
    {
+      std::cout << "A prescription exists for this user." << std::endl;
       strncpy(msg.field1, p.doctorName.c_str(), sizeof(msg.field1) - 1);
       strncpy(msg.field2, p.treatment.c_str(),  sizeof(msg.field2) - 1);
       strncpy(msg.field3, p.frequency.c_str(),  sizeof(msg.field3) - 1);
+   }
+   else
+   {
+      std::cout << "There are no current prescriptions for this user." << std::endl;
    }
    udpSend(sockfd, msg, ntohs(from.sin_port));
 }

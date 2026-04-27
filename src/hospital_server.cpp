@@ -224,9 +224,11 @@ void HospitalServer::doAuthenticate(int clientFd, const Message &req)
 
 void HospitalServer::doLookup(int clientFd, const Message &req)
 {
+   std::string suffix = hashSuffix(std::string(req.field1));
+   std::cout << "Hospital Server received a lookup request from a user with a hash suffix " << suffix << " over port " << PORT_HOSP_TCP << "." << std::endl;
+
    std::vector<std::string> names = getDoctorList();
 
-   // Pack all doctor names into field1 separated by '|'
    std::string packed;
    for (size_t i = 0; i < names.size(); i++)
    {
@@ -237,6 +239,9 @@ void HospitalServer::doLookup(int clientFd, const Message &req)
    Message resp{};
    resp.status = 0;
    strncpy(resp.field1, packed.c_str(), sizeof(resp.field1) - 1);
+
+   std::cout << "Hospital Server has sent the doctor lookup to the client." << std::endl;
+
    send(clientFd, &resp, sizeof(resp), 0);
 }
 
@@ -283,83 +288,77 @@ void HospitalServer::loadHospital(const std::string &filepath)
 void HospitalServer::doLookupDoctor(int clientFd, const Message &req)
 {
    std::string doctor(req.field1);
-   std::cout << "Hospital Server has received a request to look up doctor " << doctor << "." << std::endl;
+   std::string suffix = hashSuffix(std::string(req.field2));
+
+   std::cout << "Hospital Server has received a lookup request from a user with hash suffix " << suffix << " to lookup " << doctor << " availability using TCP over port " << PORT_HOSP_TCP << "." << std::endl;
 
    Message resp = callAppointment(req);
 
+   std::cout << "Hospital Server sent the doctor lookup request to the Appointment server." << std::endl;
    std::cout << "Hospital Server has received the response from Appointment Server using UDP over port " << PORT_HOSP_UDP << "." << std::endl;
-
-   if (resp.status != 0)
-   {
-      std::cout << "Doctor " << doctor << " has no available slots." << std::endl;
-   }
-   else
-   {
-      std::cout << "Hospital Server has sent the response to the client using TCP over port " << PORT_HOSP_TCP << "." << std::endl;
-   }
+   std::cout << "The Hospital Server has sent the response to the client." << std::endl;
 
    send(clientFd, &resp, sizeof(resp), 0);
 }
 
 void HospitalServer::doSchedule(int clientFd, const Message &req)
 {
-   std::string doctor(req.field1);
-   std::string time(req.field2);
+   std::string suffix = hashSuffix(std::string(req.field4));
 
-   std::cout << "Hospital Server has received a request to schedule an appointment with " << doctor << " at " << time << "." << std::endl;
+   std::cout << "Hospital Server has received a schedule request from a user with hash suffix: " << suffix << " to book an appointment using TCP over port " << PORT_HOSP_TCP << "." << std::endl;
 
    Message resp = callAppointment(req);
 
-   std::cout << "Hospital Server has received the response from Appointment Server using UDP over port " << PORT_HOSP_UDP << "." << std::endl;
-
-   if (resp.status != 0)
-      std::cout << "The requested slot is not available." << std::endl;
-   else
-      std::cout << "Hospital Server has sent the result to the client using TCP over port " << PORT_HOSP_TCP << "." << std::endl;
+   std::cout << "Hospital Server has sent the schedule request to the appointment server." << std::endl;
+   std::cout << "Hospital Server has received the response from Appointment Server using UDP over " << PORT_HOSP_UDP << "." << std::endl;
+   std::cout << "The hospital server has sent the response to the client." << std::endl;
 
    send(clientFd, &resp, sizeof(resp), 0);
 }
 
 void HospitalServer::doViewAppointment(int clientFd, const Message &req)
 {
-   std::cout << "Hospital Server has received a request to view an appointment." << std::endl;
+   std::string suffix = hashSuffix(std::string(req.field1));
+
+   std::cout << "Hospital server has received a view appointment request from a user with hash suffix " << suffix << " to view their appointment details using TCP over port " << PORT_HOSP_TCP << "." << std::endl;
 
    Message resp = callAppointment(req);
 
-   std::cout << "Hospital Server has received the response from Appointment Server using UDP over port " << PORT_HOSP_UDP << "." << std::endl;
-   std::cout << "Hospital Server has sent the result to the client using TCP over port " << PORT_HOSP_TCP << "." << std::endl;
+   std::cout << "Hospital Server has sent the view appointments request to the Appointment Server." << std::endl;
+   std::cout << "Hospital Server has received the response from the appointment server using UDP over port " << PORT_HOSP_UDP << "." << std::endl;
+   std::cout << "The hospital server has sent the response to the client." << std::endl;
 
    send(clientFd, &resp, sizeof(resp), 0);
 }
 
 void HospitalServer::doCancel(int clientFd, const Message &req)
 {
-   std::cout << "Hospital Server has received a request to cancel an appointment." << std::endl;
+   std::string suffix = hashSuffix(std::string(req.field1));
+
+   std::cout << "Hospital Server has received a cancel request from user with hash suffix: " << suffix << " to cancel their appointment using TCP over port " << PORT_HOSP_TCP << "." << std::endl;
 
    Message resp = callAppointment(req);
 
+   std::cout << "The hospital server has sent the cancel request to the appointment server." << std::endl;
    std::cout << "Hospital Server has received the response from Appointment Server using UDP over port " << PORT_HOSP_UDP << "." << std::endl;
-
-   if (resp.status != 0)
-      std::cout << "No appointment found to cancel." << std::endl;
-   else
-      std::cout << "Hospital Server has sent the result to the client using TCP over port " << PORT_HOSP_TCP << "." << std::endl;
+   std::cout << "The hospital server has sent the response to the client." << std::endl;
 
    send(clientFd, &resp, sizeof(resp), 0);
 }
 
 void HospitalServer::doViewAppointments(int clientFd, const Message &req)
 {
-   std::string doctorName = getDoctorName(req.field1);  // resolve hash → name
+   std::string doctorName = getDoctorName(req.field1);
 
-   std::cout << "Hospital Server has received a request to view appointments for " << doctorName << "." << std::endl;
+   std::cout << "Hospital Server has received a view appointments request from " << doctorName << " to view their schedule details using TCP over port " << PORT_HOSP_TCP << "." << std::endl;
 
    Message fwd = req;
    strncpy(fwd.field1, doctorName.c_str(), sizeof(fwd.field1) - 1);
    Message resp = callAppointment(fwd);
 
-   std::cout << "Hospital Server has received the response from Appointment Server using UDP over port " << PORT_HOSP_UDP << "." << std::endl;
-   std::cout << "Hospital Server has sent the result to the client using TCP over port " << PORT_HOSP_TCP << "." << std::endl;
+   std::cout << "The hospital server has sent the view appointments request to the Appointment Server." << std::endl;
+   std::cout << "Hospital server has received the response from the Appointment server using UDP over port " << PORT_HOSP_UDP << "." << std::endl;
+   std::cout << "The hospital server has sent the response to the client." << std::endl;
 
    send(clientFd, &resp, sizeof(resp), 0);
 }
@@ -370,17 +369,19 @@ void HospitalServer::doPrescribe(int clientFd, const Message &req)
    std::string frequency(req.field2);
    std::string doctorName = getDoctorName(req.field3);
 
-   std::cout << "Hospital Server has received a prescribe request from " << doctorName << "." << std::endl;
+   std::cout << "Hospital Server has received a prescription request from " << doctorName << " for a user with hash suffix " << suffix << " using TCP over port " << PORT_HOSP_TCP << "." << std::endl;
 
-   // Step 1: get illness + full patientHash from AppointmentServer
+   // Step 1: get illness + full patientHash from AppointmentServer (also cancels slot)
    Message getMsg{};
-   strncpy(getMsg.type,   "GET_ILLNESS", sizeof(getMsg.type));
-   strncpy(getMsg.field1, suffix.c_str(), sizeof(getMsg.field1) - 1);
+   strncpy(getMsg.type,   "GET_ILLNESS",      sizeof(getMsg.type));
+   strncpy(getMsg.field1, suffix.c_str(),     sizeof(getMsg.field1) - 1);
+   strncpy(getMsg.field2, doctorName.c_str(), sizeof(getMsg.field2) - 1);
    Message illnessResp = callAppointment(getMsg);
+
+   std::cout << "Hospital Server has sent a request to fetch patients with hash suffix " << suffix << " illness information to the Appointment Server." << std::endl;
 
    if (illnessResp.status != 0)
    {
-      std::cout << "No appointment found for patient with hash suffix " << suffix << "." << std::endl;
       Message resp{};
       resp.status = 1;
       send(clientFd, &resp, sizeof(resp), 0);
@@ -391,15 +392,10 @@ void HospitalServer::doPrescribe(int clientFd, const Message &req)
    std::string patientHash(illnessResp.field2);
    std::string treatment = getTreatment(illness);
 
-   std::cout << "Hospital Server has received illness info from Appointment Server using UDP over port " << PORT_HOSP_UDP << "." << std::endl;
+   std::cout << "Hospital Server has received the illness response from the Appointment server using UDP over port " << PORT_HOSP_UDP << "." << std::endl;
+   std::cout << "Acquiring treatment for " << illness << " from the database." << std::endl;
 
-   // Step 2: cancel the appointment slot
-   Message cancelMsg{};
-   strncpy(cancelMsg.type,   "CANCEL",           sizeof(cancelMsg.type));
-   strncpy(cancelMsg.field1, patientHash.c_str(), sizeof(cancelMsg.field1) - 1);
-   callAppointment(cancelMsg);
-
-   // Step 3: send prescription to PrescriptionServer
+   // Step 2: send prescription to PrescriptionServer
    Message prescMsg{};
    strncpy(prescMsg.type,   "PRESCRIBE",          sizeof(prescMsg.type));
    strncpy(prescMsg.field1, doctorName.c_str(),   sizeof(prescMsg.field1) - 1);
@@ -408,20 +404,38 @@ void HospitalServer::doPrescribe(int clientFd, const Message &req)
    strncpy(prescMsg.field4, frequency.c_str(),    sizeof(prescMsg.field4) - 1);
    Message prescResp = callPrescription(prescMsg);
 
-   std::cout << "Hospital Server has sent the prescription to Prescription Server using UDP over port " << PORT_HOSP_UDP << "." << std::endl;
-   std::cout << "Hospital Server has sent the result to the client using TCP over port " << PORT_HOSP_TCP << "." << std::endl;
+   std::cout << "Hospital server has sent the prescription request to the prescription server to prescribe " << treatment << "." << std::endl;
+   std::cout << "Hospital server has received the response from the prescription server using UDP over port " << PORT_HOSP_UDP << "." << std::endl;
+   std::cout << "The hospital server has sent the response to the client." << std::endl;
 
    send(clientFd, &prescResp, sizeof(prescResp), 0);
 }
 
 void HospitalServer::doViewPrescription(int clientFd, const Message &req)
 {
-   std::cout << "Hospital Server has received a request to view a prescription." << std::endl;
+   bool isDocRequest = (strcmp(req.field2, "doctor") == 0);
+
+   if (isDocRequest)
+   {
+      std::string patientSuffix(req.field1);
+      std::string doctorName = getDoctorName(std::string(req.field3));
+      std::cout << "Hospital Server has received a prescription request from " << doctorName
+                << " to view a patient with hash suffix " << patientSuffix
+                << " prescription details using TCP over port " << PORT_HOSP_TCP << "." << std::endl;
+   }
+   else
+   {
+      std::string suffix = hashSuffix(std::string(req.field1));
+      std::cout << "Hospital Server has received a prescription request from a patient with hash suffix " << suffix
+                << " to view their prescription details using TCP over port " << PORT_HOSP_TCP << "." << std::endl;
+   }
+
+   std::cout << "Hospital Server has sent the prescription request to the Prescription Server." << std::endl;
 
    Message resp = callPrescription(req);
 
-   std::cout << "Hospital Server has received the response from Prescription Server using UDP over port " << PORT_HOSP_UDP << "." << std::endl;
-   std::cout << "Hospital Server has sent the result to the client using TCP over port " << PORT_HOSP_TCP << "." << std::endl;
+   std::cout << "Hospital server has received the response from the prescription server using UDP over port " << PORT_HOSP_UDP << "." << std::endl;
+   std::cout << "Hospital server has sent the response to the client." << std::endl;
 
    send(clientFd, &resp, sizeof(resp), 0);
 }

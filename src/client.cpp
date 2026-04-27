@@ -26,6 +26,7 @@ private:
    void cmdViewAppointments();
    void cmdPrescribe(const std::string &patient, const std::string &frequency);
    void cmdViewPrescriptionDoctor(const std::string &patient);
+   void cmdHelp();
    void tcpSend(const Message &msg);
    Message tcpRecv();
 
@@ -110,7 +111,13 @@ void Client::patientCommandLoop()
          ss >> doctor >> time >> illness;
          cmdSchedule(doctor, time, illness);
       }
-      else if (input == "quit")                      { close(sockfd); exit(0); }
+      else if (input == "help")                      cmdHelp();
+      else if (input == "quit")
+      {
+         std::cout << "You have successfully been logged out." << std::endl;
+         close(sockfd);
+         exit(0);
+      }
       else std::cout << "Unknown command." << std::endl;
    }
 }
@@ -132,7 +139,13 @@ void Client::doctorCommandLoop()
          ss >> suffix >> frequency;
          cmdPrescribe(suffix, frequency);
       }
-      else if (input == "quit")                      { close(sockfd); exit(0); }
+      else if (input == "help")                      cmdHelp();
+      else if (input == "quit")
+      {
+         std::cout << "You have successfully been logged out." << std::endl;
+         close(sockfd);
+         exit(0);
+      }
       else std::cout << "Unknown command." << std::endl;
    }
 }
@@ -140,16 +153,18 @@ void Client::doctorCommandLoop()
 void Client::cmdLookup()
 {
    Message msg{};
-   strncpy(msg.type, "LOOKUP", sizeof(msg.type));
+   strncpy(msg.type,   "LOOKUP",          sizeof(msg.type));
+   strncpy(msg.field1, userHash.c_str(),  sizeof(msg.field1) - 1);
    tcpSend(msg);
+
+   std::cout << username << " sent a lookup request to the hospital server." << std::endl;
 
    Message resp = tcpRecv();
 
-   // Split the '|'-delimited doctor list from field1
+   std::cout << "The client received the response from the hospital server using TCP over port " << localPort << ".\nThe following doctors are available:" << std::endl;
    std::string packed(resp.field1);
    std::istringstream ss(packed);
    std::string name;
-   std::cout << "The list of doctors available are: " << std::endl;
    while (std::getline(ss, name, '|'))
       std::cout << name << std::endl;
 }
@@ -159,22 +174,33 @@ void Client::cmdLookupDoctor(const std::string &doctor)
    Message msg{};
    strncpy(msg.type,   "LOOKUP_DOC",    sizeof(msg.type));
    strncpy(msg.field1, doctor.c_str(),  sizeof(msg.field1) - 1);
+   strncpy(msg.field2, userHash.c_str(), sizeof(msg.field2) - 1);
    tcpSend(msg);
+
+   std::cout << "Patient " << username << " sent a lookup request to the hospital server for " << doctor << "." << std::endl;
 
    Message resp = tcpRecv();
 
-   if (resp.status != 0)
+   if (resp.status == 1)
    {
-      std::cout << "Doctor " << doctor << " has no available slots." << std::endl;
+      std::cout << "The client received the response from the Hospital Server using TCP over port " << localPort << ".\n\n" << doctor << " has no time slots available." << std::endl;
       return;
    }
 
    std::string packed(resp.field1);
    std::istringstream ss(packed);
    std::string slot;
-   std::cout << "The available slots for " << doctor << " are: " << std::endl;
-   while (std::getline(ss, slot, '|'))
-      std::cout << slot << std::endl;
+
+   if (resp.status == 2)
+   {
+      std::cout << "The client received the response from the hospital server using TCP over port " << localPort << ".\n\nAll time blocks are available for " << doctor << "." << std::endl;
+   }
+   else
+   {
+      std::cout << "The client received the response from the Hospital Server using TCP over port " << localPort << ".\n\n" << doctor << " is available at times: " << std::endl;
+      while (std::getline(ss, slot, '|'))
+         std::cout << slot << std::endl;
+   }
 }
 
 void Client::cmdSchedule(const std::string &doctor, const std::string &time, const std::string &illness)
@@ -187,32 +213,50 @@ void Client::cmdSchedule(const std::string &doctor, const std::string &time, con
    strncpy(msg.field4, userHash.c_str(), sizeof(msg.field4) - 1);
    tcpSend(msg);
 
-   Message resp = tcpRecv();
-
-   if (resp.status != 0)
-      std::cout << "The requested slot is not available." << std::endl;
-   else
-      std::cout << "Appointment scheduled with " << doctor << " at " << time << " for " << illness << "." << std::endl;
-}
-
-void Client::cmdViewAppointment()
-{
-   Message msg{};
-   strncpy(msg.type,   "VIEW_APPT",     sizeof(msg.type));
-   strncpy(msg.field1, userHash.c_str(), sizeof(msg.field1) - 1);
-   tcpSend(msg);
+   std::cout << username << " sent an appointment schedule request to the hospital server." << std::endl;
 
    Message resp = tcpRecv();
 
    if (resp.status != 0)
    {
-      std::cout << "You have no appointment scheduled." << std::endl;
+      std::string available(resp.field1);
+      if (available.empty())
+      {
+         std::cout << "The client received the response from the hospital server using TCP over port " << localPort << "\n\nUnable to schedule an appointment with " << doctor << " at this time, as all time blocks have been taken up." << std::endl;
+      }
+      else
+      {
+         std::cout << "The client received the response from the Hospital Server using TCP over port " << localPort << "\n\nUnable to schedule an appointment with " << doctor << " at " << time << ". Other available time blocks are" << std::endl;
+         std::istringstream ss(available);
+         std::string slot;
+         while (std::getline(ss, slot, '|'))
+            std::cout << slot << std::endl;
+      }
+   }
+   else
+   {
+      std::cout << "The client received the response from the Hospital Server using TCP over port " << localPort << "\n\nAn appointment has been successfully scheduled for patient " << username << " with " << doctor << " at " << time << "." << std::endl;
+   }
+}
+
+void Client::cmdViewAppointment()
+{
+   Message msg{};
+   strncpy(msg.type,   "VIEW_APPT",      sizeof(msg.type));
+   strncpy(msg.field1, userHash.c_str(), sizeof(msg.field1) - 1);
+   tcpSend(msg);
+
+   std::cout << username << " sent a request to view their appointment to the Hospital Server." << std::endl;
+
+   Message resp = tcpRecv();
+
+   if (resp.status != 0)
+   {
+      std::cout << "The client received the response from the hospital server using TCP over client port " << localPort << "\n\nYou do not have an appointment today." << std::endl;
       return;
    }
 
-   std::cout << "Your appointment is with " << resp.field1
-             << " at " << resp.field2
-             << " for " << resp.field3 << "." << std::endl;
+   std::cout << "The client received the response from the hospital server using TCP over port " << localPort << "\n\nYou have an appointment scheduled with " << resp.field1 << " at " << resp.field2 << "." << std::endl;
 }
 
 void Client::cmdCancel()
@@ -222,12 +266,14 @@ void Client::cmdCancel()
    strncpy(msg.field1, userHash.c_str(), sizeof(msg.field1) - 1);
    tcpSend(msg);
 
+   std::cout << username << " sent a cancellation request to the Hospital Server." << std::endl;
+
    Message resp = tcpRecv();
 
    if (resp.status != 0)
-      std::cout << "You have no appointment to cancel." << std::endl;
+      std::cout << "The client received the response from the Hospital Server using TCP over port " << localPort << "\n\nYou have no appointments available to cancel." << std::endl;
    else
-      std::cout << "Your appointment has been cancelled." << std::endl;
+      std::cout << "The client received the response from the Hospital Server using TCP over port " << localPort << "\n\nYou have successfully cancelled your appointment with " << resp.field1 << " at " << resp.field2 << "." << std::endl;
 }
 
 void Client::cmdViewPrescription()
@@ -237,14 +283,22 @@ void Client::cmdViewPrescription()
    strncpy(msg.field1, userHash.c_str(),    sizeof(msg.field1) - 1);
    tcpSend(msg);
 
+   std::cout << username << " sent a request to view their prescription to the Hospital Server." << std::endl;
+
    Message resp = tcpRecv();
 
    if (resp.status != 0)
-      std::cout << "No prescription found." << std::endl;
+   {
+      std::cout << "The client received the response from the Hospital Server using TCP over port " << localPort << "\n\nYou do not have a prescription to look up." << std::endl;
+   }
+   else if (strcmp(resp.field3, "None") == 0)
+   {
+      std::cout << "The client received the response from the Hospital Server using TCP over port " << localPort << "\n\nYou were not prescribed any treatment by \"" << resp.field1 << " following your diagnosis." << std::endl;
+   }
    else
-      std::cout << "Your prescription: " << resp.field2
-                << " prescribed by " << resp.field1
-                << ", take " << resp.field3 << "." << std::endl;
+   {
+      std::cout << "The client received the response from the Hospital Server using TCP over port " << localPort << "\n\nYou have been prescribed " << resp.field2 << ", to be taken " << resp.field3 << ", by " << resp.field1 << "." << std::endl;
+   }
 }
 
 void Client::cmdViewAppointments()
@@ -254,23 +308,25 @@ void Client::cmdViewAppointments()
    strncpy(msg.field1, userHash.c_str(), sizeof(msg.field1) - 1);
    tcpSend(msg);
 
+   std::cout << username << " sent a request to view their scheduled appointments to the Hospital Server." << std::endl;
+
    Message resp = tcpRecv();
 
    if (resp.status != 0)
    {
-      std::cout << "You have no appointments scheduled." << std::endl;
+      std::cout << "The client received the response from the Hospital Server using TCP over port " << localPort << "\n\nYou do not have any appointments scheduled." << std::endl;
       return;
    }
 
+   std::cout << "The client received the response from the Hospital Server using TCP over port " << localPort << "\n\n" << username << " is scheduled at times: " << std::endl;
    std::string packed(resp.field1);
    std::istringstream ss(packed);
    std::string time, patientHash, illness;
-   std::cout << "Your appointments:" << std::endl;
    while (std::getline(ss, time, '|') &&
           std::getline(ss, patientHash, '|') &&
           std::getline(ss, illness, '|'))
    {
-      std::cout << "  " << time << " — " << hashSuffix(patientHash) << " — " << illness << std::endl;
+      std::cout << time << std::endl;
    }
 }
 
@@ -283,12 +339,14 @@ void Client::cmdPrescribe(const std::string &patient, const std::string &frequen
    strncpy(msg.field3, userHash.c_str(),   sizeof(msg.field3) - 1);  // doctor's hash
    tcpSend(msg);
 
+   std::cout << username << " sent a request to the Hospital Server to prescribe " << patient << " following their diagnosis." << std::endl;
+
    Message resp = tcpRecv();
 
    if (resp.status != 0)
-      std::cout << "Prescription failed. No appointment found for that patient." << std::endl;
+      std::cout << "The client received the response from the Hospital Server using TCP over port " << localPort << "\n\nPrescription failed. No appointment found for that patient." << std::endl;
    else
-      std::cout << "Prescription issued successfully." << std::endl;
+      std::cout << "The client received the response from the Hospital Server using TCP over port " << localPort << "\n\nYou have successfully prescribed " << patient << " with " << resp.field3 << ", to be taken " << resp.field4 << "." << std::endl;
 }
 
 void Client::cmdViewPrescriptionDoctor(const std::string &patient)
@@ -297,16 +355,40 @@ void Client::cmdViewPrescriptionDoctor(const std::string &patient)
    strncpy(msg.type,   "VIEW_PRESCRIPTION", sizeof(msg.type));
    strncpy(msg.field1, patient.c_str(),     sizeof(msg.field1) - 1);  // hash suffix
    strncpy(msg.field2, "doctor",            sizeof(msg.field2) - 1);  // flag for resolution
+   strncpy(msg.field3, userHash.c_str(),    sizeof(msg.field3) - 1);  // doctor's own hash
    tcpSend(msg);
+
+   std::cout << username << " sent a request to view " << patient << " prescription to the Hospital Server." << std::endl;
 
    Message resp = tcpRecv();
 
    if (resp.status != 0)
-      std::cout << "No prescription found for that patient." << std::endl;
+      std::cout << "The client received the response from the Hospital Server using TCP over port " << localPort << "\n\n" << patient << " does not have a prescription." << std::endl;
    else
-      std::cout << "Patient prescription: " << resp.field2
-                << " prescribed by " << resp.field1
-                << ", take " << resp.field3 << "." << std::endl;
+      std::cout << "The client received the response from the Hospital Server using TCP over port " << localPort << "\n\n" << patient << " has been prescribed " << resp.field2 << ", to be taken " << resp.field3 << ", by " << resp.field1 << "." << std::endl;
+}
+
+void Client::cmdHelp()
+{
+   if (isDoctor)
+   {
+      std::cout << "Please enter the command:\n"
+                << "<view_appointments>,\n"
+                << "<prescribe <patient> <frequency>>,\n"
+                << "<view_prescription>,\n"
+                << "<quit>" << std::endl;
+   }
+   else
+   {
+      std::cout << "Please enter the command: \n"
+                << "<lookup>,\n"
+                << "<lookup <doctor>>,\n"
+                << "<schedule <doctor> <start_time> <illness>>,\n"
+                << "<cancel>,\n"
+                << "<view_appointment>,\n"
+                << "<view_prescription>,\n"
+                << "<quit>" << std::endl;
+   }
 }
 
 void Client::tcpSend(const Message &msg)

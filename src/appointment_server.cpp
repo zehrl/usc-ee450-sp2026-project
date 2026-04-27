@@ -227,6 +227,21 @@ std::string AppointmentServer::getPatientTime(const std::string &patientHash)
 void AppointmentServer::handleLookupDoctor(Message &msg, sockaddr_in &from)
 {
    std::string doctorName(msg.field1);
+
+   std::cout << "Appointment Server has received a doctor availability request." << std::endl;
+
+   auto it = appointmentData.find(doctorName);
+   if (it == appointmentData.end())
+   {
+      std::cout << doctorName << " was not found in the system." << std::endl;
+      msg.status = 1;
+      msg.field1[0] = '\0';
+      udpSend(sockfd, msg, ntohs(from.sin_port));
+      return;
+   }
+
+   std::cout << doctorName << " was found in the system." << std::endl;
+
    std::vector<std::string> slots = getAvailableSlots(doctorName);
 
    std::string packed;
@@ -236,7 +251,8 @@ void AppointmentServer::handleLookupDoctor(Message &msg, sockaddr_in &from)
       packed += slots[i];
    }
 
-   msg.status = slots.empty() ? 1 : 0;
+   bool allFree = (slots.size() == it->second.size());
+   msg.status = slots.empty() ? 1 : (allFree ? 2 : 0);
    strncpy(msg.field1, packed.c_str(), sizeof(msg.field1) - 1);
    udpSend(sockfd, msg, ntohs(from.sin_port));
 }
@@ -246,27 +262,55 @@ void AppointmentServer::handleSchedule(Message &msg, sockaddr_in &from)
    std::string time(msg.field2);
    std::string illness(msg.field3);
    std::string patientHash(msg.field4);
+   std::string suffix = hashSuffix(patientHash);
+
+   std::cout << "Appointment scheduling request received (time: " << time
+             << ", doctor: " << doctor
+             << ", patient hash suffix: " << suffix
+             << ", illness: " << illness << ")." << std::endl;
 
    bool ok = bookSlot(doctor, time, patientHash, illness);
    msg.status = ok ? 0 : 1;
 
-   if (ok) saveAppointments();
+   if (ok)
+   {
+      std::cout << "Appointment has been scheduled successfully for user " << suffix << " with " << doctor << "." << std::endl;
+      saveAppointments();
+   }
+   else
+   {
+      std::cout << "The requested appointment time is not available." << std::endl;
+      std::vector<std::string> available = getAvailableSlots(doctor);
+      std::string packed;
+      for (size_t i = 0; i < available.size(); i++)
+      {
+         if (i > 0) packed += "|";
+         packed += available[i];
+      }
+      strncpy(msg.field1, packed.c_str(), sizeof(msg.field1) - 1);
+   }
 
    udpSend(sockfd, msg, ntohs(from.sin_port));
 }
 void AppointmentServer::handleViewAppointment(Message &msg, sockaddr_in &from)
 {
    std::string patientHash(msg.field1);
+   std::string suffix = hashSuffix(patientHash);
+
+   std::cout << "Appointment Server has received a view appointment command for the user with hash suffix " << suffix << "." << std::endl;
+
    std::string doctor  = getPatientDoctor(patientHash);
    std::string time    = getPatientTime(patientHash);
    std::string illness = getPatientIllness(patientHash);
 
    if (doctor.empty())
    {
+      std::cout << "The user with hash suffix " << suffix << " has no appointment in the system." << std::endl;
       msg.status = 1;
    }
    else
    {
+      std::cout << "Returning details regarding the appointment for the user with hash suffix " << suffix << "." << std::endl;
       msg.status = 0;
       strncpy(msg.field1, doctor.c_str(),  sizeof(msg.field1) - 1);
       strncpy(msg.field2, time.c_str(),    sizeof(msg.field2) - 1);
@@ -278,50 +322,94 @@ void AppointmentServer::handleViewAppointment(Message &msg, sockaddr_in &from)
 void AppointmentServer::handleCancel(Message &msg, sockaddr_in &from)
 {
    std::string patientHash(msg.field1);
+   std::string suffix = hashSuffix(patientHash);
+
+   std::cout << "Appointment Server has received a cancel appointment command for the user with hash suffix: " << suffix << "." << std::endl;
+
+   std::string doctor = getPatientDoctor(patientHash);
+   std::string time   = getPatientTime(patientHash);
+
    bool ok = cancelSlot(patientHash);
    msg.status = ok ? 0 : 1;
-   if (ok) saveAppointments();
+
+   if (ok)
+   {
+      std::cout << "Successfully canceled appointment." << std::endl;
+      saveAppointments();
+      strncpy(msg.field1, doctor.c_str(), sizeof(msg.field1) - 1);
+      strncpy(msg.field2, time.c_str(),   sizeof(msg.field2) - 1);
+   }
+   else
+   {
+      std::cout << "Error: Failed to find appointment." << std::endl;
+   }
+
    udpSend(sockfd, msg, ntohs(from.sin_port));
 }
 void AppointmentServer::handleViewAppointments(Message &msg, sockaddr_in &from)
 {
    std::string doctorName(msg.field1);
+
+   std::cout << "Appointment Server has received a request to view appointments scheduled for " << doctorName << "." << std::endl;
+
    auto it = appointmentData.find(doctorName);
 
-   if (it == appointmentData.end())
-   {
-      msg.status = 1;
-      udpSend(sockfd, msg, ntohs(from.sin_port));
-      return;
-   }
-
    std::string packed;
-   for (const auto &slot : it->second)
+   if (it != appointmentData.end())
    {
-      if (!slot.patientHash.empty())
+      for (const auto &slot : it->second)
       {
-         if (!packed.empty()) packed += "|";
-         packed += slot.time + "|" + slot.patientHash + "|" + slot.illness;
+         if (!slot.patientHash.empty())
+         {
+            if (!packed.empty()) packed += "|";
+            packed += slot.time + "|" + slot.patientHash + "|" + slot.illness;
+         }
       }
    }
 
-   msg.status = packed.empty() ? 1 : 0;
-   strncpy(msg.field1, packed.c_str(), sizeof(msg.field1) - 1);
+   if (packed.empty())
+   {
+      std::cout << "No appointments have been made for " << doctorName << "." << std::endl;
+      msg.status = 1;
+   }
+   else
+   {
+      std::cout << "Returning the scheduled appointments for " << doctorName << "." << std::endl;
+      msg.status = 0;
+      strncpy(msg.field1, packed.c_str(), sizeof(msg.field1) - 1);
+   }
+
    udpSend(sockfd, msg, ntohs(from.sin_port));
 }
 void AppointmentServer::handleGetIllness(Message &msg, sockaddr_in &from)
 {
    std::string suffix(msg.field1);
+   std::string doctorName(msg.field2);
 
-   for (const auto &[doctor, slots] : appointmentData)
+   std::cout << "Appointment Server has received a request from Hospital Server regarding information about a user with hash suffix " << suffix << " from " << doctorName << "." << std::endl;
+
+   for (auto &[doctor, slots] : appointmentData)
    {
-      for (const auto &slot : slots)
+      for (auto &slot : slots)
       {
          if (!slot.patientHash.empty() && hashSuffix(slot.patientHash) == suffix)
          {
             msg.status = 0;
-            strncpy(msg.field1, slot.illness.c_str(),     sizeof(msg.field1) - 1);
-            strncpy(msg.field2, slot.patientHash.c_str(), sizeof(msg.field2) - 1);
+            std::string illness    = slot.illness;
+            std::string patientHash = slot.patientHash;
+            std::string slotTime   = slot.time;
+
+            strncpy(msg.field1, illness.c_str(),     sizeof(msg.field1) - 1);
+            strncpy(msg.field2, patientHash.c_str(), sizeof(msg.field2) - 1);
+
+            std::cout << "Sending back the requested information to the Hospital server." << std::endl;
+
+            slot.patientHash = "";
+            slot.illness     = "";
+            saveAppointments();
+
+            std::cout << "Successfully removed " << suffix << " appointment slot, " << slotTime << " is now free to be scheduled for tomorrow." << std::endl;
+
             udpSend(sockfd, msg, ntohs(from.sin_port));
             return;
          }
