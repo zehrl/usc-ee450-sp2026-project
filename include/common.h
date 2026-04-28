@@ -3,13 +3,18 @@
  * @brief Common methods and variables shared in the source cpp files.
  */
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <netdb.h>
+#include <sys/types.h>
 #include <netinet/in.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
 #include <string>
 #include "../third_party/sha256.h"
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <cstdlib>
-#include <cstdio>
 
 // Last 3 digits of USC ID: 570 used for each port number
 #define PORT_AUTH 21570
