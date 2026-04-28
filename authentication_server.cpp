@@ -8,7 +8,7 @@
 #include <sstream>
 #include <vector>
 #include <string>
-#include "../include/common.h"
+#include "common.h"
 
 /**
  * @brief Authentication server that interacts with the users database
@@ -39,7 +39,7 @@ public:
     * @brief Loads user data from database into memory
     * @param filepath File path of database .txt file
     */
-   void loadUsers(const std::string &filepath = "data/users.txt");
+   void loadUsers(const std::string &filepath = "users.txt");
 
    /**
     * @brief Checks if provided credentials matches any in the database

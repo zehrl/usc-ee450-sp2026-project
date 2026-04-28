@@ -9,7 +9,7 @@
 #include <sstream>
 #include <sys/socket.h>
 #include <unistd.h>
-#include "../include/common.h"
+#include "common.h"
 
 /**
  * @brief Client code that interacts with hospital server

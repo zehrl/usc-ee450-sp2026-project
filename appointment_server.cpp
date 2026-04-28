@@ -9,7 +9,7 @@
 #include <vector>
 #include <string>
 #include <map>
-#include "../include/common.h"
+#include "common.h"
 
 /**
  * @brief Appointment server handles retrieving and updating appointments.
@@ -31,13 +31,13 @@ public:
     * @brief Loads the appointment data into memory
     * @param filepath Filepath of data .txt file
     */
-   void loadAppointments(const std::string &filepath = "data/appointments.txt");
+   void loadAppointments(const std::string &filepath = "appointments.txt");
 
    /**
     * @brief Saves the appointment into the .txt database
     * @param filepath Path of .txt database
     */
-   void saveAppointments(const std::string &filepath = "data/appointments.txt");
+   void saveAppointments(const std::string &filepath = "appointments.txt");
 
    /**
     * @brief Provides a list of available time slots for a specific doctor

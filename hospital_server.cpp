@@ -8,7 +8,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include "../include/common.h"
+#include "common.h"
 
 #include <fstream>
 #include <sstream>
@@ -29,7 +29,7 @@ public:
     * @brief Loads hospital data into memory
     * @param filepath Filepath to data
     */
-   void loadHospital(const std::string &filepath = "data/hospital.txt");
+   void loadHospital(const std::string &filepath = "hospital.txt");
 
    /**
     * @brief Determines if user hash is a doctor

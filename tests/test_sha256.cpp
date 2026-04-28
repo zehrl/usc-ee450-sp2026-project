@@ -1,6 +1,6 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include "../third_party/doctest.h"
-#include "../include/common.h"
+#include "../doctest.h"
+#include "../common.h"
 
 TEST_SUITE("sha256hex")
 {

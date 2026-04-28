@@ -8,7 +8,7 @@
 #include <sstream>
 #include <vector>
 #include <string>
-#include "../include/common.h"
+#include "common.h"
 
 /**
  * @brief Prescription server that interacts with hospital database
@@ -42,13 +42,13 @@ public:
     * @brief Loads prescription data into memory
     * @param filepath File path to prescription .txt database
     */
-   void loadPrescriptions(const std::string &filepath = "data/prescriptions.txt");
+   void loadPrescriptions(const std::string &filepath = "prescriptions.txt");
 
    /**
     * @brief Saves prescription data in memory into the database
     * @param filepath Filepath of prescription .txt database
     */
-   void savePrescriptions(const std::string &filepath = "data/prescriptions.txt");
+   void savePrescriptions(const std::string &filepath = "prescriptions.txt");
 
    /**
     * @brief Adds prescription to patient in memory

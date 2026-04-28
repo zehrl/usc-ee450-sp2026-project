@@ -1,6 +1,5 @@
 CXX = g++
 CXXFLAGS = -std=c++17 -Wall -Wextra -g
-SRC_DIR = src
 BUILD_DIR = build
 
 CLIENT = client
@@ -9,22 +8,22 @@ AUTH = authentication_server
 APPT = appointment_server
 PRES = prescription_server
 
-SHA256 = third_party/sha256.cpp
+SHA256 = sha256.cpp
 
 $(CLIENT):
-	$(CXX) $(CXXFLAGS) -I include -I third_party $(SRC_DIR)/client.cpp $(SHA256) -o $(CLIENT)
+	$(CXX) $(CXXFLAGS) -I . client.cpp $(SHA256) -o $(CLIENT)
 
 $(HOSPITAL):
-	$(CXX) $(CXXFLAGS) -I include -I third_party $(SRC_DIR)/hospital_server.cpp $(SHA256) -o $(HOSPITAL)
+	$(CXX) $(CXXFLAGS) -I . hospital_server.cpp $(SHA256) -o $(HOSPITAL)
 
 $(AUTH):
-	$(CXX) $(CXXFLAGS) -I include -I third_party $(SRC_DIR)/authentication_server.cpp $(SHA256) -o $(AUTH)
+	$(CXX) $(CXXFLAGS) -I . authentication_server.cpp $(SHA256) -o $(AUTH)
 
 $(APPT):
-	$(CXX) $(CXXFLAGS) -I include -I third_party $(SRC_DIR)/appointment_server.cpp $(SHA256) -o $(APPT)
+	$(CXX) $(CXXFLAGS) -I . appointment_server.cpp $(SHA256) -o $(APPT)
 
 $(PRES):
-	$(CXX) $(CXXFLAGS) -I include -I third_party $(SRC_DIR)/prescription_server.cpp $(SHA256) -o $(PRES)
+	$(CXX) $(CXXFLAGS) -I . prescription_server.cpp $(SHA256) -o $(PRES)
 
 mkbuilddir:
 	mkdir -p $(BUILD_DIR)
@@ -38,40 +37,37 @@ stop:
 	pkill prescription_server || true
 
 reset:
-	cp data/seed/appointments.txt data/appointments.txt
-	cp data/seed/prescriptions.txt data/prescriptions.txt
-	cp data/seed/users.txt data/users.txt
-	cp data/seed/hospital.txt data/hospital.txt
+	@echo "Data files are in the project root; no seed directory to restore from."
 
 restart: stop reset all
 
 clean:
-	rm -rf $(BUILD_DIR)/*
 	rm -f $(CLIENT) $(HOSPITAL) $(AUTH) $(APPT) $(PRES)
+	rm -rf $(BUILD_DIR)
 
 # ---------------------------------------------------------------------------
 # doctest.h make macros for testing during development
 # ---------------------------------------------------------------------------
-TEST_FLAGS = -std=c++17 -g -Wall -I include -I third_party
+TEST_FLAGS = -std=c++17 -g -Wall -I .
 
-test_sha256: mkbuilddir tests/test_sha256.cpp third_party/sha256.cpp
-	$(CXX) $(TEST_FLAGS) tests/test_sha256.cpp third_party/sha256.cpp -o $(BUILD_DIR)/test_sha256
+test_sha256: mkbuilddir tests/test_sha256.cpp sha256.cpp
+	$(CXX) $(TEST_FLAGS) tests/test_sha256.cpp sha256.cpp -o $(BUILD_DIR)/test_sha256
 	./$(BUILD_DIR)/test_sha256
 
-test_auth: mkbuilddir tests/test_auth.cpp third_party/sha256.cpp
-	$(CXX) $(TEST_FLAGS) tests/test_auth.cpp third_party/sha256.cpp -o $(BUILD_DIR)/test_auth
+test_auth: mkbuilddir tests/test_auth.cpp sha256.cpp
+	$(CXX) $(TEST_FLAGS) tests/test_auth.cpp sha256.cpp -o $(BUILD_DIR)/test_auth
 	./$(BUILD_DIR)/test_auth
 
-test_hospital: mkbuilddir tests/test_hospital.cpp third_party/sha256.cpp
-	$(CXX) $(TEST_FLAGS) tests/test_hospital.cpp third_party/sha256.cpp -o $(BUILD_DIR)/test_hospital
+test_hospital: mkbuilddir tests/test_hospital.cpp sha256.cpp
+	$(CXX) $(TEST_FLAGS) tests/test_hospital.cpp sha256.cpp -o $(BUILD_DIR)/test_hospital
 	./$(BUILD_DIR)/test_hospital
 
-test_appointment: mkbuilddir tests/test_appointment.cpp third_party/sha256.cpp
-	$(CXX) $(TEST_FLAGS) tests/test_appointment.cpp third_party/sha256.cpp -o $(BUILD_DIR)/test_appointment
+test_appointment: mkbuilddir tests/test_appointment.cpp sha256.cpp
+	$(CXX) $(TEST_FLAGS) tests/test_appointment.cpp sha256.cpp -o $(BUILD_DIR)/test_appointment
 	./$(BUILD_DIR)/test_appointment
 
-test_prescription: mkbuilddir tests/test_prescription.cpp third_party/sha256.cpp
-	$(CXX) $(TEST_FLAGS) tests/test_prescription.cpp third_party/sha256.cpp -o $(BUILD_DIR)/test_prescription
+test_prescription: mkbuilddir tests/test_prescription.cpp sha256.cpp
+	$(CXX) $(TEST_FLAGS) tests/test_prescription.cpp sha256.cpp -o $(BUILD_DIR)/test_prescription
 	./$(BUILD_DIR)/test_prescription
 
-test: reset test_sha256 test_auth test_hospital test_appointment test_prescription
+test: test_sha256 test_auth test_hospital test_appointment test_prescription

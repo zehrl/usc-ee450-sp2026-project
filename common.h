@@ -14,7 +14,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <string>
-#include "../third_party/sha256.h"
+#include "sha256.h"
 
 // Last 3 digits of USC ID: 570 used for each port number
 #define PORT_AUTH 21570
