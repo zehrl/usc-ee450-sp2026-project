@@ -31,12 +31,6 @@ mkbuilddir:
 
 all: mkbuilddir $(CLIENT) $(HOSPITAL) $(AUTH) $(APPT) $(PRES)
 
-run: all
-	$(BUILD_DIR)/hospital_server &
-	$(BUILD_DIR)/authentication_server &
-	$(BUILD_DIR)/appointment_server &
-	$(BUILD_DIR)/prescription_server &
-
 stop:
 	pkill hospital_server || true
 	pkill authentication_server || true
@@ -55,10 +49,7 @@ clean:
 	rm -rf $(BUILD_DIR)/*
 
 # ---------------------------------------------------------------------------
-# Test targets (uses doctest.h — NOT included in submission)
-# Each test binary compiles the corresponding .cpp source directly so the
-# tests can access all public members without a separate link step.
-# Run all tests: make test
+# doctest.h make macros for testing during development
 # ---------------------------------------------------------------------------
 TEST_FLAGS = -std=c++17 -g -Wall -I include -I third_party
 
