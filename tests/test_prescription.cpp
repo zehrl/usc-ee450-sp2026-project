@@ -86,7 +86,7 @@ TEST_SUITE("PrescriptionServer::addPrescription")
       PrescriptionServer s;
       s.loadPrescriptions("data/prescriptions.txt");
       // Spec defines exactly these four frequency strings
-      for (const std::string &freq : {"None", "Daily", "Bi-daily", "Weekly"})
+      for (const std::string freq : {"None", "Daily", "Bi-daily", "Weekly"})
       {
          bool ok = s.addPrescription("Dr.House", sha256hex(freq), "Antivirals", freq);
          CHECK(ok == true);

@@ -13,6 +13,7 @@
 #include <fstream>
 #include <sstream>
 #include <map>
+#include <vector>
 
 #define MAX_BACKLOG 10 // Maximum connections server can handle
 #define SERVER_NAME "hospital_server"

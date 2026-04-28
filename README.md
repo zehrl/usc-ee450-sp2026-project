@@ -114,7 +114,7 @@ make test_sha256 # SHA-256 helpers/sanity check
 
 ### Environment
 
-- Remote testing: Ubuntu 22.04 via Multipass VM (`ee450-project`)
+- Remote testing: Ubuntu 20.04 via Multipass VM (`ee450-project`)
 - SSH config host alias: `ee450-project`
 
 To start the remote VM:
