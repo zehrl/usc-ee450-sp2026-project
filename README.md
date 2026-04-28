@@ -48,15 +48,15 @@ The `type` field selects the command; the numbered fields carry parameters whose
 
 | type | field1 | field2 | field3 | field4 | status meaning |
 |---|---|---|---|---|---|
-| `AUTH` | userHash | passHash | — | — | 0 = ok, 1 = fail |
-| `LOOKUP` | userHash | — | — | — | 0 = patient, 1 = doctor, 2 = not found |
-| `LOOKUP_DOC` | doctorName | userHash | — | — | 0 = has free slots, 1 = no free slots, 2 = all free |
+| `AUTH` | userHash | passHash | - | - | 0 = ok, 1 = fail |
+| `LOOKUP` | userHash | - | - | - | 0 = patient, 1 = doctor, 2 = not found |
+| `LOOKUP_DOC` | doctorName | userHash | - | - | 0 = has free slots, 1 = no free slots, 2 = all free |
 | `SCHEDULE` | doctorName | timeSlot | illness | patientHash | 0 = booked, 1 = conflict |
-| `VIEW_APPT` | patientHash | — | illness | — | 0 = found, 1 = none |
-| `CANCEL` | patientHash | timeSlot | — | — | 0 = cancelled, 1 = not found |
-| `VIEW_APPTS` | patientHash | — | — | — | 0 = found, 1 = none |
+| `VIEW_APPT` | patientHash | - | illness | - | 0 = found, 1 = none |
+| `CANCEL` | patientHash | timeSlot | - | - | 0 = cancelled, 1 = not found |
+| `VIEW_APPTS` | patientHash | - | - | - | 0 = found, 1 = none |
 | `PRESCRIBE` | patientSuffix | frequency | doctorHash | patientHash | 0 = ok, 1 = fail |
-| `VIEW_PRESCRIPTION` | patientSuffix | "doctor" (if doctor) | doctorHash (if doctor) | — | 0 = found, 1 = none |
+| `VIEW_PRESCRIPTION` | patientSuffix | "doctor" (if doctor) | doctorHash (if doctor) | - | 0 = found, 1 = none |
 
 
 ---
