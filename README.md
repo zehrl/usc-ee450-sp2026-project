@@ -1,110 +1,120 @@
-# EE450 – Distributed Hospital Network System
+# USC EE450 – Distributed Hospital Network System
 
 ## Author
 
-Logan Zehr — EE450 Spring 2026, Section 2
+Logan Zehr - EE450 Spring 2026, Section 2
+USC ID: 5225-9935-70
 
 ## Overview
 
 A distributed hospital management system built in C++ using UNIX sockets from scratch. Five processes communicate over TCP and UDP on localhost: a client, a central hospital server, and three backend servers (authentication, appointment, prescription).
 
-## Architecture
-
-```
-Client ──TCP──► HospitalServer ──UDP──► AuthServer
-                               ──UDP──► AppointmentServer
-                               ──UDP──► PrescriptionServer
-```
-
-- **Client** connects to HospitalServer over a persistent TCP connection
-- **HospitalServer** is the hub — handles all client requests, forwards to backends via UDP
-- **Backend servers** (Auth, Appointment, Prescription) each listen on a UDP port and reply directly to HospitalServer
-
-### Port Assignments
-
-| Process               | Protocol | Port  |
-|-----------------------|----------|-------|
-| authentication_server | UDP      | 21570 |
-| prescription_server   | UDP      | 22570 |
-| appointment_server    | UDP      | 23570 |
-| hospital_server       | UDP      | 25570 |
-| hospital_server       | TCP      | 26570 |
-
-### Data Files (`data/`)
-
-| File               | Owner                | Contents                          |
-|--------------------|----------------------|-----------------------------------|
-| `users.txt`        | AuthServer           | userHash + passHash per line      |
-| `hospital.txt`     | HospitalServer       | Doctor list + illness→treatment map |
-| `appointments.txt` | AppointmentServer    | Doctor schedules, 8 slots each    |
-| `prescriptions.txt`| PrescriptionServer   | Patient prescriptions             |
-
-## Design Decisions
-
-- **No `getaddrinfo`** — all sockets use `sockaddr_in` + `htons(port)` + `inet_addr("127.0.0.1")` directly
-- **Constructor vs `boot()`** — constructors initialize data only (no sockets), enabling unit tests to instantiate classes without networking
-- **`#ifndef DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN`** guard in each `.cpp` so tests can `#include` the source directly without duplicate `main`
-- **`fork()` per client** in HospitalServer — parent immediately accepts next connection; child handles the session
-- **SHA-256** via `third_party/sha256.h` (LekKit/sha256) — all credentials stored and transmitted as 64-char hex strings; on-screen display uses last 5 chars (`hash_suffix`)
-- **Fixed-size `Message` struct** for all UDP communication — safe to pass directly to `sendto`/`recvfrom`
-
 ## Requirements
 
 - g++ with C++17 support (`-std=c++17`)
 - Make
-- POSIX sockets (Linux/macOS)
-- Graded on Ubuntu 20.04
+- Ubuntu 20.04
+- multipass (optional for development using VM)
 
 ## Build & Run
 
 ```bash
-# Build all binaries into build/
+# Build all binaries
 make all
 
-# Start all servers (background)
-make run
+OR for individual builds
+
+make {client | hospital_server | authentication_server | appointment_server | prescription_server}
+
+# Run servers (do this first)
+./{authentication_server | appointment_server | hospital_server | prescription_server}
 
 # Run client
-./build/client <username> <password>
+./client <username> <password>
 
 # Stop all servers
 make stop
 
-# Clean build artifacts
-make clean
+# Macro: Stop servers, reset seed data, and compile all code
+make restart
 ```
 
-Binaries are written to `build/`. Run servers before starting the client.
+## Architecture
 
-## Testing
+- **Client** connects to HospitalServer over a persistent TCP connection
+- **HospitalServer** is the central server that handles all client requests, forwards to backends via UDP
+- **Backend servers** Authentication, Appointment, and Prescription servers each listen on a UDP port and reply directly to HospitalServer
 
-Unit tests use [doctest](https://github.com/doctest/doctest) (header-only, in `third_party/`). Tests are **not included in the submission tarball**.
+### Port Assignments
+
+Ports follow the spec as following (using last 3 digits of USC ID - 570 -> port+XXX): 
+
+| Server/Process        | Protocol | Port  |
+|-----------------------|----------|-------|
+| authentication_server | UDP      | 21570 |
+| prescription_server   | UDP      | 22570 |
+| appointment_server    | UDP      | 23570 |
+| hospital_server (1 of 2)       | UDP      | 25570 |
+| hospital_server (2 of 2)       | TCP      | 26570 |
+| Client                | 2 TCPs   | -     |
+
+## Design Decisions
+
+### common.h
+
+**TCP/UDP Message structure**
+
+Inside of `include/common.h` is the Message data structure. This may be the messiest and hardest portion to understand. Below is the usage in all of the servers and their respective methods. By using a central message structure, it was easy to develop. Abstraction of this message for future iterations would certainly make the code easier to interprate.
+
+```
+struct Message
+{
+   char type[32];
+   char field1[256];
+   char field2[256];
+   char field3[256];
+   char field4[256];
+   int status;
+};
+```
+
+`type` = Type of command ("AUTH", "LOOKUP", "LOOKUP_DOC", "SCHEDULE", "VIEW_APPT", "CANCEL", "VIEW_APPTS", "PRESCRIBE", "VIEW_PRESCRIPTION")
+`field1` = 1st identifier: userHash (AUTH/LOOKUP), doctorName (LOOKUP_DOC/SCHEDULE), patientHash (VIEW_APPT/CANCEL), patientSuffix
+`field2` = 2nd parameter: passHash (AUTH), timeSlot (SCHEDULE), userHash (LOOKUP_DOC), "doctor" role flag (VIEW_PRESCRIPTION from doctor), or frequency (PRESCRIBE)
+`field3` = 3rd parameter: illness (SCHEDULE/VIEW_APPT response), treatment (prescription response), or doctorHash (PRESCRIBE/VIEW_PRESCRIPTION from doctor)
+`field4` = 4th parameter: patientHash (SCHEDULE request), frequency (PRESCRIBE via PrescriptionServer)
+`status` = Result code: 0 = success, 1 = failure/not found, 2 = all slots free (for `LOOKUP_DOC` only)
+
+**TCP/UDP Socket Programming helper methods**
+
+Common.h holds the shared functionality for each source file/server. By combining UDP/TCP socket programming (ex. `makeTCPServerSocket`, `makeTCPClientSocket`, `makeUDPSocket`, `udpSend`, `udpRecv` etc.), it was much easier to develop the servers after the initial design of the first server.
+
+### Booting and Running of Servers
+
+Inside each server, you will notice the abstraction/separation of "booting" (designating ports/sockets) and "running" (handling the incoming/outgoing messages and then running the appropriate commands). This separation was realized necessary early because of how the testing suite works. By first testing internal getting/setting of data before adding socket programming, I was able to get the main logic completed rather quickly.
+
+## Documentation
+
+Each file uses [Doxygen](https://www.doxygen.nl/manual/docblocks.html) documentation for ease of use/readability.
+
+## Development
+
+### Testing
+
+Unit tests use [doctest](https://github.com/doctest/doctest) (header-only, in `third_party/`). I chose this lightweight testing library because it resides on a single header file. C++ can be notoriously hard to develop and test on. This small set back of writing tests before and during development proved to be invaluable. For future reference, here is how to run the tests:
 
 ```bash
-make test           # run all 5 test suites
-make test_sha256    # SHA-256 helpers
-make test_auth      # AuthServer logic
-make test_hospital  # HospitalServer logic
-make test_appointment   # AppointmentServer slot logic
-make test_prescription  # PrescriptionServer logic
+make test # run all 5 test suites
+make test_auth # AuthServer logic
+make test_hospital # HospitalServer logic
+make test_appointment # AppointmentServer slot logic
+make test_prescription # PrescriptionServer logic
+make test_sha256 # SHA-256 helpers/sanity check
 ```
 
-Each test suite compiles the corresponding `.cpp` directly and exercises data logic only — no sockets needed.
+### Environment
 
-### Test status
-
-| Suite             | Status  |
-|-------------------|---------|
-| test_sha256       | ✓ pass  |
-| test_auth         | ✓ pass  |
-| test_hospital     | ✓ pass  |
-| test_appointment  | pending |
-| test_prescription | pending |
-
-## Development Environment
-
-- Primary development: macOS (Apple Silicon)
-- Remote testing: Ubuntu 22.04 via Multipass VM (`ee450-project`, static IP `192.168.65.2`)
+- Remote testing: Ubuntu 22.04 via Multipass VM (`ee450-project`)
 - SSH config host alias: `ee450-project`
 
 To start the remote VM:
