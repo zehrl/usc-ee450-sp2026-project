@@ -12,24 +12,24 @@ PRES = prescription_server
 SHA256 = third_party/sha256.cpp
 
 $(CLIENT):
-	$(CXX) $(CXXFLAGS) -I include -I third_party $(SRC_DIR)/client.cpp $(SHA256) -o $(BUILD_DIR)/$(CLIENT)
+	$(CXX) $(CXXFLAGS) -I include -I third_party $(SRC_DIR)/client.cpp $(SHA256) -o $(CLIENT)
 
 $(HOSPITAL):
-	$(CXX) $(CXXFLAGS) -I include -I third_party $(SRC_DIR)/hospital_server.cpp $(SHA256) -o $(BUILD_DIR)/$(HOSPITAL)
+	$(CXX) $(CXXFLAGS) -I include -I third_party $(SRC_DIR)/hospital_server.cpp $(SHA256) -o $(HOSPITAL)
 
 $(AUTH):
-	$(CXX) $(CXXFLAGS) -I include -I third_party $(SRC_DIR)/authentication_server.cpp $(SHA256) -o $(BUILD_DIR)/$(AUTH)
+	$(CXX) $(CXXFLAGS) -I include -I third_party $(SRC_DIR)/authentication_server.cpp $(SHA256) -o $(AUTH)
 
 $(APPT):
-	$(CXX) $(CXXFLAGS) -I include -I third_party $(SRC_DIR)/appointment_server.cpp $(SHA256) -o $(BUILD_DIR)/$(APPT)
+	$(CXX) $(CXXFLAGS) -I include -I third_party $(SRC_DIR)/appointment_server.cpp $(SHA256) -o $(APPT)
 
 $(PRES):
-	$(CXX) $(CXXFLAGS) -I include -I third_party $(SRC_DIR)/prescription_server.cpp $(SHA256) -o $(BUILD_DIR)/$(PRES)
+	$(CXX) $(CXXFLAGS) -I include -I third_party $(SRC_DIR)/prescription_server.cpp $(SHA256) -o $(PRES)
 
 mkbuilddir:
 	mkdir -p $(BUILD_DIR)
 
-all: mkbuilddir $(CLIENT) $(HOSPITAL) $(AUTH) $(APPT) $(PRES)
+all: $(CLIENT) $(HOSPITAL) $(AUTH) $(APPT) $(PRES)
 
 stop:
 	pkill hospital_server || true
@@ -47,6 +47,7 @@ restart: stop reset all
 
 clean:
 	rm -rf $(BUILD_DIR)/*
+	rm -f $(CLIENT) $(HOSPITAL) $(AUTH) $(APPT) $(PRES)
 
 # ---------------------------------------------------------------------------
 # doctest.h make macros for testing during development
