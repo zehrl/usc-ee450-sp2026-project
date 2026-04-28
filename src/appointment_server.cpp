@@ -1,3 +1,8 @@
+/**
+ * @file appointment_server.cpp
+ * @brief Appointment server that interacts with appointment database
+ */
+
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -6,37 +11,141 @@
 #include <map>
 #include "../include/common.h"
 
+/**
+ * @brief Appointment server handles retrieving and updating appointments.
+ */
 class AppointmentServer
 {
 public:
+   /**
+    * @brief Loads data into memory and begins server socket(s)
+    */
    void boot();
+
+   /**
+    * @brief Actual server loop that handles commands
+    */
    void run();
 
-   // public for testing
+   /**
+    * @brief Loads the appointment data into memory
+    * @param filepath Filepath of data .txt file
+    */
    void loadAppointments(const std::string &filepath = "data/appointments.txt");
+
+   /**
+    * @brief Saves the appointment into the .txt database
+    * @param filepath Path of .txt database
+    */
    void saveAppointments(const std::string &filepath = "data/appointments.txt");
+
+   /**
+    * @brief Provides a list of available time slots for a specific doctor
+    * @param doctorName The doctor name
+    * @return Available time slots as a vector of strings
+    */
    std::vector<std::string> getAvailableSlots(const std::string &doctorName);
+
+   /**
+    * @brief Determines if a given timeslot for a doctor is available
+    * @param doctorName The name of the doctor
+    * @param time The timeslot (ex. "9:00" format)
+    * @return True/False if timeslot is available
+    */
    bool isSlotAvailable(const std::string &doctorName, const std::string &time);
+
+   /**
+    * @brief Books the timeslot in memory for a given doctor, patient, timeslot and reason/illness
+    * @param doctorName The doctor name
+    * @param time The time slot (ex. "9:00")
+    * @param patientHash The full hash of the patient
+    * @param illness The illness/reason for visit
+    * @return True - Success, False - Failed
+    */
    bool bookSlot(const std::string &doctorName, const std::string &time,
                  const std::string &patientHash, const std::string &illness);
+
+   /**
+    * @brief Removes the timeslot in memory for a given patient
+    * @param patientHash The full hash of the patient
+    * @return True - Success, False - Failed
+    */
    bool cancelSlot(const std::string &patientHash);
+
+   /**
+    * @brief Returns the illness of a patient
+    * @param patientHash The full hash of the patient
+    * @return Illness as a string
+    */
    std::string getPatientIllness(const std::string &patientHash);
+
+   /**
+    * @brief Returns the doctor of a patient
+    * @param patientHash The full hash of the patient
+    * @return The doctor
+    */
    std::string getPatientDoctor(const std::string &patientHash);
+
+   /**
+    * @brief Returns the patients scheduled time slot
+    * @param patientHash The full hash of the patient
+    * @return The patient time slot, or "" if it does not exist
+    */
    std::string getPatientTime(const std::string &patientHash);
 
+   /**
+    * @brief Time slot data structure
+    */
    struct Slot
    {
-      std::string time, patientHash, illness;
+      std::string time; // Ex. 9:00
+      std::string patientHash; // Full SH256 hash
+      std::string illness; // ex. "Flu"
    };
 
    std::map<std::string, std::vector<Slot>> appointmentData; // Holds doctor and time slot data
 
 private:
+   /**
+    * @brief Handles "LOOKUP_DOC" command
+    * @param msg Message data contents (see include/common.h)
+    * @param from Socket address in
+    */
    void handleLookupDoctor(Message &msg, sockaddr_in &from);
+
+   /**
+    * @brief Handles "SCHEDULE" command
+    * @param msg Message data contents (see include/common.h)
+    * @param from Socket address in
+    */
    void handleSchedule(Message &msg, sockaddr_in &from);
+
+   /**
+    * @brief Handles "VIEW_APPT" command
+    * @param msg Message data contents (see include/common.h)
+    * @param from Socket address in
+    */
    void handleViewAppointment(Message &msg, sockaddr_in &from);
+
+   /**
+    * @brief Handles "CANCEL" command
+    * @param msg Message data contents (see include/common.h)
+    * @param from Socket address in
+    */
    void handleCancel(Message &msg, sockaddr_in &from);
+
+   /**
+    * @brief Handles "VIEW_APPTS" command
+    * @param msg Message data contents (see include/common.h)
+    * @param from Socket address in
+    */
    void handleViewAppointments(Message &msg, sockaddr_in &from);
+
+   /**
+    * @brief Handles "GET_ILLNESS" command
+    * @param msg Message data contents (see include/common.h)
+    * @param from Socket address in
+    */
    void handleGetIllness(Message &msg, sockaddr_in &from);
 
    int sockfd = -1;
@@ -56,12 +165,18 @@ void AppointmentServer::run()
    while (true)
    {
       udpRecv(sockfd, msg, from);
-      if      (strcmp(msg.type, "LOOKUP_DOC") == 0) handleLookupDoctor(msg, from);
-      else if (strcmp(msg.type, "SCHEDULE")   == 0) handleSchedule(msg, from);
-      else if (strcmp(msg.type, "VIEW_APPT") == 0) handleViewAppointment(msg, from);
-      else if (strcmp(msg.type, "CANCEL")      == 0) handleCancel(msg, from);
-      else if (strcmp(msg.type, "VIEW_APPTS")  == 0) handleViewAppointments(msg, from);
-      else if (strcmp(msg.type, "GET_ILLNESS") == 0) handleGetIllness(msg, from);
+      if (strcmp(msg.type, "LOOKUP_DOC") == 0)
+         handleLookupDoctor(msg, from);
+      else if (strcmp(msg.type, "SCHEDULE") == 0)
+         handleSchedule(msg, from);
+      else if (strcmp(msg.type, "VIEW_APPT") == 0)
+         handleViewAppointment(msg, from);
+      else if (strcmp(msg.type, "CANCEL") == 0)
+         handleCancel(msg, from);
+      else if (strcmp(msg.type, "VIEW_APPTS") == 0)
+         handleViewAppointments(msg, from);
+      else if (strcmp(msg.type, "GET_ILLNESS") == 0)
+         handleGetIllness(msg, from);
    }
 }
 
@@ -154,7 +269,8 @@ std::vector<std::string> AppointmentServer::getAvailableSlots(const std::string 
 bool AppointmentServer::bookSlot(const std::string &doctorName, const std::string &time,
                                  const std::string &patientHash, const std::string &illness)
 {
-   if (!isSlotAvailable(doctorName, time)) return false;
+   if (!isSlotAvailable(doctorName, time))
+      return false;
 
    for (auto &slot : appointmentData[doctorName])
    {
@@ -247,7 +363,8 @@ void AppointmentServer::handleLookupDoctor(Message &msg, sockaddr_in &from)
    std::string packed;
    for (size_t i = 0; i < slots.size(); i++)
    {
-      if (i > 0) packed += "|";
+      if (i > 0)
+         packed += "|";
       packed += slots[i];
    }
 
@@ -264,10 +381,7 @@ void AppointmentServer::handleSchedule(Message &msg, sockaddr_in &from)
    std::string patientHash(msg.field4);
    std::string suffix = hashSuffix(patientHash);
 
-   std::cout << "Appointment scheduling request received (time: " << time
-             << ", doctor: " << doctor
-             << ", patient hash suffix: " << suffix
-             << ", illness: " << illness << ")." << std::endl;
+   std::cout << "Appointment scheduling request received (time: " << time << ", doctor: " << doctor << ", patient hash suffix: " << suffix << ", illness: " << illness << ")." << std::endl;
 
    bool ok = bookSlot(doctor, time, patientHash, illness);
    msg.status = ok ? 0 : 1;
@@ -284,7 +398,8 @@ void AppointmentServer::handleSchedule(Message &msg, sockaddr_in &from)
       std::string packed;
       for (size_t i = 0; i < available.size(); i++)
       {
-         if (i > 0) packed += "|";
+         if (i > 0)
+            packed += "|";
          packed += available[i];
       }
       strncpy(msg.field1, packed.c_str(), sizeof(msg.field1) - 1);
@@ -299,8 +414,8 @@ void AppointmentServer::handleViewAppointment(Message &msg, sockaddr_in &from)
 
    std::cout << "Appointment Server has received a view appointment command for the user with hash suffix " << suffix << "." << std::endl;
 
-   std::string doctor  = getPatientDoctor(patientHash);
-   std::string time    = getPatientTime(patientHash);
+   std::string doctor = getPatientDoctor(patientHash);
+   std::string time = getPatientTime(patientHash);
    std::string illness = getPatientIllness(patientHash);
 
    if (doctor.empty())
@@ -312,8 +427,8 @@ void AppointmentServer::handleViewAppointment(Message &msg, sockaddr_in &from)
    {
       std::cout << "Returning details regarding the appointment for the user with hash suffix " << suffix << "." << std::endl;
       msg.status = 0;
-      strncpy(msg.field1, doctor.c_str(),  sizeof(msg.field1) - 1);
-      strncpy(msg.field2, time.c_str(),    sizeof(msg.field2) - 1);
+      strncpy(msg.field1, doctor.c_str(), sizeof(msg.field1) - 1);
+      strncpy(msg.field2, time.c_str(), sizeof(msg.field2) - 1);
       strncpy(msg.field3, illness.c_str(), sizeof(msg.field3) - 1);
    }
 
@@ -327,7 +442,7 @@ void AppointmentServer::handleCancel(Message &msg, sockaddr_in &from)
    std::cout << "Appointment Server has received a cancel appointment command for the user with hash suffix: " << suffix << "." << std::endl;
 
    std::string doctor = getPatientDoctor(patientHash);
-   std::string time   = getPatientTime(patientHash);
+   std::string time = getPatientTime(patientHash);
 
    bool ok = cancelSlot(patientHash);
    msg.status = ok ? 0 : 1;
@@ -337,7 +452,7 @@ void AppointmentServer::handleCancel(Message &msg, sockaddr_in &from)
       std::cout << "Successfully canceled appointment." << std::endl;
       saveAppointments();
       strncpy(msg.field1, doctor.c_str(), sizeof(msg.field1) - 1);
-      strncpy(msg.field2, time.c_str(),   sizeof(msg.field2) - 1);
+      strncpy(msg.field2, time.c_str(), sizeof(msg.field2) - 1);
    }
    else
    {
@@ -361,7 +476,9 @@ void AppointmentServer::handleViewAppointments(Message &msg, sockaddr_in &from)
       {
          if (!slot.patientHash.empty())
          {
-            if (!packed.empty()) packed += "|";
+            // Use | here as delimiter
+            if (!packed.empty())
+               packed += "|";
             packed += slot.time + "|" + slot.patientHash + "|" + slot.illness;
          }
       }
@@ -395,17 +512,17 @@ void AppointmentServer::handleGetIllness(Message &msg, sockaddr_in &from)
          if (!slot.patientHash.empty() && hashSuffix(slot.patientHash) == suffix)
          {
             msg.status = 0;
-            std::string illness    = slot.illness;
+            std::string illness = slot.illness;
             std::string patientHash = slot.patientHash;
-            std::string slotTime   = slot.time;
+            std::string slotTime = slot.time;
 
-            strncpy(msg.field1, illness.c_str(),     sizeof(msg.field1) - 1);
+            strncpy(msg.field1, illness.c_str(), sizeof(msg.field1) - 1);
             strncpy(msg.field2, patientHash.c_str(), sizeof(msg.field2) - 1);
 
             std::cout << "Sending back the requested information to the Hospital server." << std::endl;
 
             slot.patientHash = "";
-            slot.illness     = "";
+            slot.illness = "";
             saveAppointments();
 
             std::cout << "Successfully removed " << suffix << " appointment slot, " << slotTime << " is now free to be scheduled for tomorrow." << std::endl;
@@ -421,6 +538,10 @@ void AppointmentServer::handleGetIllness(Message &msg, sockaddr_in &from)
 }
 
 #ifndef DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+/**
+ * @brief Entry point that starts up server
+ * @return N/A
+ */
 int main()
 {
    AppointmentServer s;

@@ -1,3 +1,8 @@
+/**
+ * @file prescription_server.cpp
+ * @brief Prescription server that interacts with hospital database
+ */
+
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -5,28 +10,79 @@
 #include <string>
 #include "../include/common.h"
 
+/**
+ * @brief Prescription server that interacts with hospital database
+ */
 class PrescriptionServer
 {
 public:
+   /**
+    * @brief Loads data into memory and begins server socket(s)
+    */
    void boot();
+
+   /**
+    * @brief Actual server loop that handles commands
+    */
    void run();
 
+   /**
+    * @brief Prescription data structure
+    */
    struct Prescription
    {
-      std::string doctorName, patientHash, treatment, frequency;
+      std::string doctorName;  // Name of doctor
+      std::string patientHash; // Hash of patient
+      std::string treatment;   // Treatment name
+      std::string frequency;   // Frequency of treatment
       bool found = false;
    };
 
+   /**
+    * @brief Loads prescription data into memory
+    * @param filepath File path to prescription .txt database
+    */
    void loadPrescriptions(const std::string &filepath = "data/prescriptions.txt");
+
+   /**
+    * @brief Saves prescription data in memory into the database
+    * @param filepath Filepath of prescription .txt database
+    */
    void savePrescriptions(const std::string &filepath = "data/prescriptions.txt");
+
+   /**
+    * @brief Adds prescription to patient in memory
+    * @param doctor Doctor
+    * @param patientHash The patient hash
+    * @param treatment The treatment
+    * @param frequency Frequency of treatment that should be followed by the patient
+    * @return True - success, false - failure
+    */
    bool addPrescription(const std::string &doctor, const std::string &patientHash,
                         const std::string &treatment, const std::string &frequency);
+
+   /**
+    * @brief Finds and returns prescription of patient
+    * @param patientHash Patient hash
+    * @return Returns prescription data
+    */
    Prescription findPrescription(const std::string &patientHash);
 
-   std::vector<Prescription> prescriptions;  // public for testing
+   std::vector<Prescription> prescriptions; // public for testing
 
 private:
+   /**
+    * @brief Handles prescribe command
+    * @param msg Message (see include/common.h)
+    * @param from sockaddr_in from sender
+    */
    void handlePrescribe(Message &msg, sockaddr_in &from);
+
+   /**
+    * @brief Handles view prescribe command
+    * @param msg Message (see include/common.h)
+    * @param from sockaddr_in from sender
+    */
    void handleViewPrescription(Message &msg, sockaddr_in &from);
 
    int sockfd = -1;
@@ -46,8 +102,10 @@ void PrescriptionServer::run()
    while (true)
    {
       udpRecv(sockfd, msg, from);
-      if      (strcmp(msg.type, "PRESCRIBE")        == 0) handlePrescribe(msg, from);
-      else if (strcmp(msg.type, "VIEW_PRESCRIPTION") == 0) handleViewPrescription(msg, from);
+      if (strcmp(msg.type, "PRESCRIBE") == 0)
+         handlePrescribe(msg, from);
+      else if (strcmp(msg.type, "VIEW_PRESCRIPTION") == 0)
+         handleViewPrescription(msg, from);
    }
 }
 
@@ -57,7 +115,8 @@ void PrescriptionServer::loadPrescriptions(const std::string &filepath)
    std::string line;
    while (std::getline(file, line))
    {
-      if (line.empty()) continue;
+      if (line.empty())
+         continue;
       std::istringstream ss(line);
       Prescription p;
       ss >> p.doctorName >> p.patientHash >> p.treatment >> p.frequency;
@@ -73,15 +132,14 @@ void PrescriptionServer::savePrescriptions(const std::string &filepath)
       file << p.doctorName << " " << p.patientHash << " " << p.treatment << " " << p.frequency << "\n";
 }
 
-bool PrescriptionServer::addPrescription(const std::string &doctor, const std::string &patientHash,
-                                          const std::string &treatment, const std::string &frequency)
+bool PrescriptionServer::addPrescription(const std::string &doctor, const std::string &patientHash, const std::string &treatment, const std::string &frequency)
 {
    Prescription p;
-   p.doctorName  = doctor;
+   p.doctorName = doctor;
    p.patientHash = patientHash;
-   p.treatment   = treatment;
-   p.frequency   = frequency;
-   p.found       = true;
+   p.treatment = treatment;
+   p.frequency = frequency;
+   p.found = true;
    prescriptions.push_back(p);
    return true;
 }
@@ -93,7 +151,7 @@ PrescriptionServer::Prescription PrescriptionServer::findPrescription(const std:
       if (p.patientHash == patientHash)
          return p;
    }
-   return Prescription{};  // found = false by default
+   return Prescription{}; // found is false by default
 }
 
 void PrescriptionServer::handlePrescribe(Message &msg, sockaddr_in &from)
@@ -101,8 +159,7 @@ void PrescriptionServer::handlePrescribe(Message &msg, sockaddr_in &from)
    std::string doctorName(msg.field1);
    std::string suffix = hashSuffix(std::string(msg.field2));
 
-   std::cout << "Prescription Server has received a request from " << doctorName
-             << " to prescribe the user with hash suffix " << suffix << "." << std::endl;
+   std::cout << "Prescription Server has received a request from " << doctorName << " to prescribe the user with hash suffix " << suffix << "." << std::endl;
 
    addPrescription(msg.field1, msg.field2, msg.field3, msg.field4);
    savePrescriptions();
@@ -143,12 +200,16 @@ void PrescriptionServer::handleViewPrescription(Message &msg, sockaddr_in &from)
    if (p.found)
    {
       if (p.frequency == "None")
+      {
          std::cout << "There are no current prescriptions for this user." << std::endl;
+      }
       else
+      {
          std::cout << "A prescription exists for this user." << std::endl;
+      }
       strncpy(msg.field1, p.doctorName.c_str(), sizeof(msg.field1) - 1);
-      strncpy(msg.field2, p.treatment.c_str(),  sizeof(msg.field2) - 1);
-      strncpy(msg.field3, p.frequency.c_str(),  sizeof(msg.field3) - 1);
+      strncpy(msg.field2, p.treatment.c_str(), sizeof(msg.field2) - 1);
+      strncpy(msg.field3, p.frequency.c_str(), sizeof(msg.field3) - 1);
    }
    else
    {
@@ -158,6 +219,10 @@ void PrescriptionServer::handleViewPrescription(Message &msg, sockaddr_in &from)
 }
 
 #ifndef DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+/**
+ * @brief Entry point that starts up server
+ * @return N/A
+ */
 int main()
 {
    PrescriptionServer s;

@@ -1,3 +1,8 @@
+/**
+ * @file hospital_server.cpp
+ * @brief Hospital server that interacts with hospital database
+ */
+
 #include <iostream>
 #include <sys/types.h>
 #include <string.h>
@@ -13,45 +18,160 @@
 #define SERVER_NAME "hospital_server"
 #define BUFFER_SIZE 1024 // Buffer allocated for receiving messages
 
+/**
+ * @brief Hospital server handles retrieving and updating appointments.
+ */
 class HospitalServer
 {
 public:
+   /**
+    * @brief Loads hospital data into memory
+    * @param filepath Filepath to data
+    */
    void loadHospital(const std::string &filepath = "data/hospital.txt");
+
+   /**
+    * @brief Determines if user hash is a doctor
+    * @param userHash User hash
+    * @return True - yes, false - no
+    */
    bool isDoctor(const std::string &userHash);
+
+   /**
+    * @brief Retrieves doctor name from user hash
+    * @param userHash User hash
+    * @return String of doctor name
+    */
    std::string getDoctorName(const std::string &userHash);
+
+   /**
+    * @brief Gets treatment from illness
+    * @param illness Illness
+    * @return String of treatment
+    */
    std::string getTreatment(const std::string &illness);
+
+   /**
+    * @brief Gets list of doctors (used for testing)
+    * @return Vector of doctors' names
+    */
    std::vector<std::string> getDoctorList();
+
+   /**
+    * @brief Loads data into memory and begins server socket(s)
+    */
    void boot();
+
+   /**
+    * @brief Actual server loop that handles commands
+    */
    void run();
 
 private:
+   /**
+    * @brief Handles client request
+    * @param clientFd Client fd
+    */
    void handleClient(int clientFd);
+
+   /**
+    * @brief Handles client request for command ""
+    * @param clientFd Client fd
+    * @param req Message request (see include/common.h)
+    */
    void doAuthenticate(int clientFd, const Message &req);
+
+   /**
+    * @brief Handles client request for command ""
+    * @param clientFd Client fd
+    * @param req Message request (see include/common.h)
+    */
    void doLookup(int clientFd, const Message &req);
+
+   /**
+    * @brief Handles client request for command "lookup <doctor>"
+    * @param clientFd Client fd
+    * @param req Message request (see include/common.h)
+    */
    void doLookupDoctor(int clientFd, const Message &req);
+
+   /**
+    * @brief Handles client request for command "schedule"
+    * @param clientFd Client fd
+    * @param req Message request (see include/common.h)
+    */
    void doSchedule(int clientFd, const Message &req);
+
+   /**
+    * @brief Handles client request for command "view appointment"
+    * @param clientFd Client fd
+    * @param req Message request (see include/common.h)
+    */
    void doViewAppointment(int clientFd, const Message &req);
+
+   /**
+    * @brief Handles client request for command "cancel"
+    * @param clientFd Client fd
+    * @param req Message request (see include/common.h)
+    */
    void doCancel(int clientFd, const Message &req);
+
+   /**
+    * @brief Handles client request for command ""
+    * @param clientFd Client fd
+    * @param req Message request (see include/common.h)
+    */
    void doViewAppointments(int clientFd, const Message &req);
+
+   /**
+    * @brief Handles client request for command "prescribe"
+    * @param clientFd Client fd
+    * @param req Message request (see include/common.h)
+    */
    void doPrescribe(int clientFd, const Message &req);
+
+   /**
+    * @brief Handles client request for command "view prescription"
+    * @param clientFd Client fd
+    * @param req Message request (see include/common.h)
+    */
    void doViewPrescription(int clientFd, const Message &req);
+
+   /**
+    * @brief Calls auth server
+    * @param req Message request (see include/common.h)
+    * @return Message response
+    */
    Message callAuth(const Message &req);
+
+   /**
+    * @brief Calls appointment server
+    * @param req Message request (see include/common.h)
+    * @return Message response
+    */
    Message callAppointment(const Message &req);
+
+   /**
+    * @brief Calls prescription server
+    * @param req Message request (see include/common.h)
+    * @return Message response
+    */
    Message callPrescription(const Message &req);
 
    int tcpSock = -1, udpSock = -1;
 
+   /**
+    * @brief Doctor data structure
+    */
    struct Doctor
    {
-      std::string name;
-      std::string hash;
+      std::string name; // Doctor's name
+      std::string hash; // Hash of doctor
    };
 
    std::vector<Doctor> doctors;
 
-   std::map<std::string, std::string> treatments; // illness → treatment
-
-   // ... data members
+   std::map<std::string, std::string> treatments;
 };
 
 bool HospitalServer::isDoctor(const std::string &userHash)
@@ -129,14 +249,14 @@ void HospitalServer::run()
       // Fork so the parent can immediately accept the next client
       if (fork() == 0)
       {
-         // --- CHILD PROCESS ---
+         // Child process
          close(tcpSock); // child doesn't need the listening socket
          handleClient(clientFd);
          close(clientFd);
          exit(0);
       }
-      // --- PARENT PROCESS ---
-      close(clientFd); // parent doesn't need this client's socket
+      // Parent
+      close(clientFd);
    }
 }
 
@@ -145,15 +265,24 @@ void HospitalServer::handleClient(int clientFd)
    Message msg{};
    while (recv(clientFd, &msg, sizeof(msg), MSG_WAITALL) > 0)
    {
-      if      (strcmp(msg.type, "AUTH")       == 0) doAuthenticate(clientFd, msg);
-      else if (strcmp(msg.type, "LOOKUP")     == 0) doLookup(clientFd, msg);
-      else if (strcmp(msg.type, "LOOKUP_DOC") == 0) doLookupDoctor(clientFd, msg);
-      else if (strcmp(msg.type, "SCHEDULE")    == 0) doSchedule(clientFd, msg);
-      else if (strcmp(msg.type, "VIEW_APPT")  == 0) doViewAppointment(clientFd, msg);
-      else if (strcmp(msg.type, "CANCEL")       == 0) doCancel(clientFd, msg);
-      else if (strcmp(msg.type, "VIEW_APPTS")  == 0) doViewAppointments(clientFd, msg);
-      else if (strcmp(msg.type, "PRESCRIBE")        == 0) doPrescribe(clientFd, msg);
-      else if (strcmp(msg.type, "VIEW_PRESCRIPTION") == 0) doViewPrescription(clientFd, msg);
+      if (strcmp(msg.type, "AUTH") == 0)
+         doAuthenticate(clientFd, msg);
+      else if (strcmp(msg.type, "LOOKUP") == 0)
+         doLookup(clientFd, msg);
+      else if (strcmp(msg.type, "LOOKUP_DOC") == 0)
+         doLookupDoctor(clientFd, msg);
+      else if (strcmp(msg.type, "SCHEDULE") == 0)
+         doSchedule(clientFd, msg);
+      else if (strcmp(msg.type, "VIEW_APPT") == 0)
+         doViewAppointment(clientFd, msg);
+      else if (strcmp(msg.type, "CANCEL") == 0)
+         doCancel(clientFd, msg);
+      else if (strcmp(msg.type, "VIEW_APPTS") == 0)
+         doViewAppointments(clientFd, msg);
+      else if (strcmp(msg.type, "PRESCRIBE") == 0)
+         doPrescribe(clientFd, msg);
+      else if (strcmp(msg.type, "VIEW_PRESCRIPTION") == 0)
+         doViewPrescription(clientFd, msg);
       memset(&msg, 0, sizeof(msg));
    }
 }
@@ -198,7 +327,7 @@ void HospitalServer::doAuthenticate(int clientFd, const Message &req)
 
    if (resp.status != 0)
    {
-      // Authentication failed — send failure response back to client
+      // Authentication failed. Send failure response back to client
       send(clientFd, &resp, sizeof(resp), 0);
       return;
    }
@@ -232,7 +361,8 @@ void HospitalServer::doLookup(int clientFd, const Message &req)
    std::string packed;
    for (size_t i = 0; i < names.size(); i++)
    {
-      if (i > 0) packed += "|";
+      if (i > 0)
+         packed += "|";
       packed += names[i];
    }
 
@@ -371,10 +501,10 @@ void HospitalServer::doPrescribe(int clientFd, const Message &req)
 
    std::cout << "Hospital Server has received a prescription request from " << doctorName << " for a user with hash suffix " << suffix << " using TCP over port " << PORT_HOSP_TCP << "." << std::endl;
 
-   // Step 1: get illness + full patientHash from AppointmentServer (also cancels slot)
+   // Get illness + full patientHash from AppointmentServer (also cancels slot)
    Message getMsg{};
-   strncpy(getMsg.type,   "GET_ILLNESS",      sizeof(getMsg.type));
-   strncpy(getMsg.field1, suffix.c_str(),     sizeof(getMsg.field1) - 1);
+   strncpy(getMsg.type, "GET_ILLNESS", sizeof(getMsg.type));
+   strncpy(getMsg.field1, suffix.c_str(), sizeof(getMsg.field1) - 1);
    strncpy(getMsg.field2, doctorName.c_str(), sizeof(getMsg.field2) - 1);
    Message illnessResp = callAppointment(getMsg);
 
@@ -395,13 +525,13 @@ void HospitalServer::doPrescribe(int clientFd, const Message &req)
    std::cout << "Hospital Server has received the illness response from the Appointment server using UDP over port " << PORT_HOSP_UDP << "." << std::endl;
    std::cout << "Acquiring treatment for " << illness << " from the database." << std::endl;
 
-   // Step 2: send prescription to PrescriptionServer
+   // Send prescription to PrescriptionServer
    Message prescMsg{};
-   strncpy(prescMsg.type,   "PRESCRIBE",          sizeof(prescMsg.type));
-   strncpy(prescMsg.field1, doctorName.c_str(),   sizeof(prescMsg.field1) - 1);
-   strncpy(prescMsg.field2, patientHash.c_str(),  sizeof(prescMsg.field2) - 1);
-   strncpy(prescMsg.field3, treatment.c_str(),    sizeof(prescMsg.field3) - 1);
-   strncpy(prescMsg.field4, frequency.c_str(),    sizeof(prescMsg.field4) - 1);
+   strncpy(prescMsg.type, "PRESCRIBE", sizeof(prescMsg.type));
+   strncpy(prescMsg.field1, doctorName.c_str(), sizeof(prescMsg.field1) - 1);
+   strncpy(prescMsg.field2, patientHash.c_str(), sizeof(prescMsg.field2) - 1);
+   strncpy(prescMsg.field3, treatment.c_str(), sizeof(prescMsg.field3) - 1);
+   strncpy(prescMsg.field4, frequency.c_str(), sizeof(prescMsg.field4) - 1);
    Message prescResp = callPrescription(prescMsg);
 
    std::cout << "Hospital server has sent the prescription request to the prescription server to prescribe " << treatment << "." << std::endl;
@@ -443,6 +573,10 @@ void HospitalServer::doViewPrescription(int clientFd, const Message &req)
 // Bandaid fix - normally we would separate our header definitions and our main method
 #ifndef DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN // Do not use main if we're using doctest
 
+/**
+ * @brief Entry point that starts up server
+ * @return N/A
+ */
 int main()
 {
    HospitalServer s;
