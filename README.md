@@ -1,20 +1,83 @@
-# USC EE450 – Distributed Hospital Network System
+# USC EE450: Distributed Hospital Network System
 
-## Author
+---
 
-Logan Zehr - EE450 Spring 2026, Section 2
-USC ID: 5225-9935-70
+## Student/Author
 
-## Overview
+Name: Logan Zehr
+USC ID: 5225993570
 
-A distributed hospital management system built in C++ using UNIX sockets from scratch. Five processes communicate over TCP and UDP on localhost: a client, a central hospital server, and three backend servers (authentication, appointment, prescription).
+## Summary of Work
 
-## Requirements
+In this project, I built a rudimentary, command line hospital management system used by patients and doctors. This project requires multiple terminals to run the given server files (on the same machine). It allows the client to view appointments, doctors, book appointments, and prescribe/view prescriptions. It follows hashing/HIPA requirements. This project was built using socket programming and C++.
 
-- g++ with C++17 support (`-std=c++17`)
-- Make
-- Ubuntu 20.04
-- multipass (optional for development using VM)
+---
+
+## Code Files
+
+`client.cpp` -  The client process (patients and doctors). This entry into the program accepts a username and password as CLI arguments. It connects to HospitalServer over TCP, authenticates, then presents a role specific flow based on the authenitcation (patient or doctor).
+
+`hospital_server.cpp` - This is the server that interfaces with the client. It first listens for client TCP connections. After receiving a request, it forwards it to the appropriate backend server using UDP. Any response is sent back to the client. This server utilizes the hospital database .txt file.
+
+`authentication_server.cpp` - Backend server responsible for verifying credentials. Utilizes users.txt and receives "AUTH" messages over UDP from HospitalServer. It then returns a pass/fail back to the hospital server.
+
+`appointment_server.cpp` - Backend server that manages appointment time slots. Utilizes appointments.txt. This server handles `lookup`, `schedule`, `view appointment(s)`, and `cancel` client commands over UDP.
+
+`prescription_server.cpp` - Backend server that manages prescriptions. Utilizes prescriptions.txt. This server handles `prescribe` and `view prescription` client commands over UDP.
+
+`common.h`  - Shared header used by source code. This defines the `Message` data structure used for communication. All helper TCP/UDP methods are included as well (`makeTCPServerSocket`, `makeTCPClientSocket`, `makeUDPSocket`, `udpSend`, `udpRecv`). A small SH256 hashing helper method is in here as well.
+
+---
+
+## Message Format
+
+All communication uses a shared `Message` structure. This is the messiest/hardest part of the code to understand:
+
+```
+struct Message {
+    char type[32];
+    char field1[256];
+    char field2[256];
+    char field3[256];
+    char field4[256];
+    int  status;
+};
+```
+
+The `type` field selects the command; the numbered fields carry parameters whose meaning depends on the command type. Here is a formatted table to differentiate the meaning of Message based on the type field:
+
+| type | field1 | field2 | field3 | field4 | status meaning |
+|---|---|---|---|---|---|
+| `AUTH` | userHash | passHash | — | — | 0 = ok, 1 = fail |
+| `LOOKUP` | userHash | — | — | — | 0 = patient, 1 = doctor, 2 = not found |
+| `LOOKUP_DOC` | doctorName | userHash | — | — | 0 = has free slots, 1 = no free slots, 2 = all free |
+| `SCHEDULE` | doctorName | timeSlot | illness | patientHash | 0 = booked, 1 = conflict |
+| `VIEW_APPT` | patientHash | — | illness | — | 0 = found, 1 = none |
+| `CANCEL` | patientHash | timeSlot | — | — | 0 = cancelled, 1 = not found |
+| `VIEW_APPTS` | patientHash | — | — | — | 0 = found, 1 = none |
+| `PRESCRIBE` | patientSuffix | frequency | doctorHash | patientHash | 0 = ok, 1 = fail |
+| `VIEW_PRESCRIPTION` | patientSuffix | "doctor" (if doctor) | doctorHash (if doctor) | — | 0 = found, 1 = none |
+
+
+---
+
+## Idiosyncrasies
+
+None known. This project has been tested and everything appears to work as expected.
+
+---
+
+## Reused Code
+
+The SHA256 code (`sha256.h` and `sha256.cpp`) was written by **LekKit**. This was provided in the project spec. Source: https://github.com/LekKit/sha256
+
+---
+
+## Ubuntu Version
+
+Ubuntu 20.04 LTS for testing/development
+
+---
 
 ## Build & Run
 
@@ -22,102 +85,33 @@ A distributed hospital management system built in C++ using UNIX sockets from sc
 # Build all binaries
 make all
 
-OR for individual builds
+# Build individually
+make client
+make hospital_server
+make authentication_server
+make appointment_server
+make prescription_server
 
-make {client | hospital_server | authentication_server | appointment_server | prescription_server}
-
-# Run servers (do this first)
-./{authentication_server | appointment_server | hospital_server | prescription_server}
+# Run servers first (in separate terminals)
+./authentication_server
+./appointment_server
+./prescription_server
+./hospital_server
 
 # Run client
 ./client <username> <password>
 
 # Stop all servers
 make stop
-
-# Macro: Stop servers, reset seed data, and compile all code
-make restart
 ```
 
-## Architecture
+---
 
-- **Client** connects to HospitalServer over a persistent TCP connection
-- **HospitalServer** is the central server that handles all client requests, forwards to backends via UDP
-- **Backend servers** Authentication, Appointment, and Prescription servers each listen on a UDP port and reply directly to HospitalServer
+## Port Assignments
 
-### Port Assignments
+Ports use the last 3 digits of USC ID (570):
 
-Ports follow the spec as following (using last 3 digits of USC ID - 570 -> port+XXX): 
-
-| Server/Process        | Protocol | Port  |
-|-----------------------|----------|-------|
-| authentication_server | UDP      | 21570 |
-| prescription_server   | UDP      | 22570 |
-| appointment_server    | UDP      | 23570 |
-| hospital_server (1 of 2)       | UDP      | 25570 |
-| hospital_server (2 of 2)       | TCP      | 26570 |
-| Client                | 2 TCPs   | -     |
-
-## Design Decisions
-
-### common.h
-
-**TCP/UDP Message structure**
-
-Inside of `include/common.h` is the Message data structure. This may be the messiest and hardest portion to understand. Below is the usage in all of the servers and their respective methods. By using a central message structure, it was easy to develop. Abstraction of this message for future iterations would certainly make the code easier to interprate.
-
-```
-struct Message
-{
-   char type[32];
-   char field1[256];
-   char field2[256];
-   char field3[256];
-   char field4[256];
-   int status;
-};
-```
-
-`type` = Type of command ("AUTH", "LOOKUP", "LOOKUP_DOC", "SCHEDULE", "VIEW_APPT", "CANCEL", "VIEW_APPTS", "PRESCRIBE", "VIEW_PRESCRIPTION")
-`field1` = 1st identifier: userHash (AUTH/LOOKUP), doctorName (LOOKUP_DOC/SCHEDULE), patientHash (VIEW_APPT/CANCEL), patientSuffix
-`field2` = 2nd parameter: passHash (AUTH), timeSlot (SCHEDULE), userHash (LOOKUP_DOC), "doctor" role flag (VIEW_PRESCRIPTION from doctor), or frequency (PRESCRIBE)
-`field3` = 3rd parameter: illness (SCHEDULE/VIEW_APPT response), treatment (prescription response), or doctorHash (PRESCRIBE/VIEW_PRESCRIPTION from doctor)
-`field4` = 4th parameter: patientHash (SCHEDULE request), frequency (PRESCRIBE via PrescriptionServer)
-`status` = Result code: 0 = success, 1 = failure/not found, 2 = all slots free (for `LOOKUP_DOC` only)
-
-**TCP/UDP Socket Programming helper methods**
-
-Common.h holds the shared functionality for each source file/server. By combining UDP/TCP socket programming (ex. `makeTCPServerSocket`, `makeTCPClientSocket`, `makeUDPSocket`, `udpSend`, `udpRecv` etc.), it was much easier to develop the servers after the initial design of the first server.
-
-### Booting and Running of Servers
-
-Inside each server, you will notice the abstraction/separation of "booting" (designating ports/sockets) and "running" (handling the incoming/outgoing messages and then running the appropriate commands). This separation was realized necessary early because of how the testing suite works. By first testing internal getting/setting of data before adding socket programming, I was able to get the main logic completed rather quickly.
-
-## Documentation
-
-Each file uses [Doxygen](https://www.doxygen.nl/manual/docblocks.html) documentation for ease of use/readability.
-
-## Development
-
-### Testing
-
-Unit tests use [doctest](https://github.com/doctest/doctest) (header-only, in `third_party/`). I chose this lightweight testing library because it resides on a single header file. C++ can be notoriously hard to develop and test on. This small set back of writing tests before and during development proved to be invaluable. For future reference, here is how to run the tests:
-
-```bash
-make test # run all 5 test suites
-make test_auth # AuthServer logic
-make test_hospital # HospitalServer logic
-make test_appointment # AppointmentServer slot logic
-make test_prescription # PrescriptionServer logic
-make test_sha256 # SHA-256 helpers/sanity check
-```
-
-### Environment
-
-- Remote testing: Ubuntu 20.04 via Multipass VM (`ee450-project`)
-- SSH config host alias: `ee450-project`
-
-To start the remote VM:
-```bash
-multipass start ee450-project
-```
+authentication_server - UDP 21570
+prescription_server - UDP 22570
+appointment_server - UDP 23570
+hospital_server - UDP 25570, TCP 26570
