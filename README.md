@@ -81,6 +81,8 @@ Ubuntu 20.04 LTS for testing/development
 
 ## Build & Run
 
+`sudo apt install build-essential` on Ubuntu server will download required make/g++ packages for project usage
+
 ```bash
 # Build all binaries
 make all
